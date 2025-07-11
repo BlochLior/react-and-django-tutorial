@@ -1,0 +1,55 @@
+# Django Backend Specific Ignores
+
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.tox/
+.nox/
+
+# Testing and Coverage
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Database files (Django development specific)
+# This is crucial for your project as you're using MariaDB externally,
+# but if you ever switch to SQLite for local development, these keep the database out of git.
+*.sqlite3
+*.db
+
+# Compiled static files (if collected locally)
+/static/  # If you collect static files here, otherwise adjust path
+/media/   # User-uploaded media files
+
+# Custom Django management command output (if any)
+# e.g., if a command generates reports or temporary files
+
+# Local settings override (if you use a local_settings.py that's not committed)
+local_settings.py
+
+# uv-specific (already covered by root .gitignore, but good to have here for self-containment)
+# uv.lock # You typically WANT to commit uv.lock!
+# This is usually commented out or excluded explicitly to prevent accidental commits
