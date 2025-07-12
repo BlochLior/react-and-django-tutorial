@@ -1,5 +1,9 @@
 # Django Backend Specific Ignores
 
+# vscode
+.vscode/
+.vscode/settings.json
+
 # Virtual environment
 .venv/
 env/
@@ -28,6 +32,7 @@ share/python-wheels/
 *.egg
 .tox/
 .nox/
+.python-version
 
 # Testing and Coverage
 .coverage
