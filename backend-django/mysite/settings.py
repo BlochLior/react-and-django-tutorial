@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-i(air8d#yx8n596r*$fcw*_b*^r@xpb5m6dpzl2g)*0@jj1zal
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS: list[str] = []
 
 
 # Application definition
@@ -39,10 +39,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -71,16 +71,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'mysite.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'db_mysql',
-        'USER': 'django_user',
-        'PASSWORD': 'SUGumz6wU279x2kdU9Qw',
+        'NAME': 'polls',
+        'USER': 'root',
+        'PASSWORD': 'CqyNxP7Kwml1QdPvNb5IvGVrj1k',
         'HOST': 'localhost',
         'PORT': '3306',
     }

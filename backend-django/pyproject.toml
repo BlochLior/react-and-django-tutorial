@@ -1,17 +1,43 @@
 [project]
-name = "backend-django"
+name = "mysite"
 version = "0.1.0"
-description = "Add your description here"
+description = "Backend for the Polls App"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "django>=5.2.4",
+    "djangorestframework>=3.16.0",
     "mysqlclient>=2.2.7",
+    "pydantic>=2.11.7",
 ]
 
 [dependency-groups]
 dev = [
+    "django-stubs>=5.2.1",
+    "mypy>=1.17.0",
+    "pylint-django>=2.6.1",
     "django-debug-toolbar>=5.2.0",
     "djlint>=1.36.4",
     "pytest>=8.4.1",
 ]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.12"
+reportAttributeAccessIssue = "none"
+reportMissingModuleSource = "warning"
+extraPaths = ["polls"]
+
+[tool.mypy]
+plugins = [
+    "mypy_django_plugin.main",
+]
+django-settings-module = "mysite.settings"
+
+[tool.pylint]
+load-plugins = "pylint_django"
+[tool.pylint.messages-control]
+disable = "C0114, C0115, C0116, R0903"
+[tool.pylint.pylint-django]
+django-settings-module = "mysite.settings"
+dummy-members = "choice_set"

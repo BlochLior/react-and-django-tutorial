@@ -1,18 +1,22 @@
 from django.contrib import admin
+from django.db.models import Sum
+
 from .models import Question, Choice
 
-class ChoiceInline(admin.TabularInline):
-    model = Choice
-    extra = 3
-
 class QuestionAdmin(admin.ModelAdmin):
-    fieldsets = [
-        (None, {"fields": ["question_text"]}),
-        ("Date information", {"fields": ["pub_date"]}),
-    ]
-    inlines = [ChoiceInline]
-    list_display = ["question_text", "pub_date", "was_published_recently"]
-    list_filter = ["pub_date"]
-    search_fields = ["question_text"]
+    list_display = ['question_text', 'pub_date', 'total_votes']
+
+    @admin.display(
+        description='Total Votes',
+        ordering='total_votes_sum'
+    )
+    def total_votes_for_display(self, obj: Question):
+        return obj.total_votes() or 0
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        queryset = queryset.annotate(total_votes_sum=Sum('choice__votes'))
+        return queryset
 
 admin.site.register(Question, QuestionAdmin)
+admin.site.register(Choice)

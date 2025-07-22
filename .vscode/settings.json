@@ -1,5 +1,10 @@
 {
     "python.terminal.activateEnvironment": false,
+    "python.linting.pylintPath": "/home/liorking/workspace/github.com/BlochLior/react-and-django-tutorial/backend-django/.venv/bin/pylint",
+    "python.linting.pylintEnabled": true,
+    "python.analysis.extraPaths": [
+        "backend-django/polls"
+    ],
     "sqltools.connections": [
         {
             "mysqlOptions": {

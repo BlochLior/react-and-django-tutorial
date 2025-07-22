@@ -1,0 +1,9 @@
+{
+    "include": [
+        "polls"
+    ],
+    "reportAttributeTypeIssues": "none",
+    "extraPaths": [
+        "polls"
+    ]
+}
