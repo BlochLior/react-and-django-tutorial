@@ -1,0 +1,78 @@
+name: Django Backend CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend-django/**'
+      - '.github/workflows/backend_tests.yml'
+      - 'backend-django/uv.lock'
+      - 'backend-django/pyproject.toml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend-django/**'
+      - '.github/workflows/backend_tests.yml'
+      - 'backend-django/uv.lock'
+      - 'backend-django/pyproject.toml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+        mysql:
+            image: mysql:8.0
+            env:
+                MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+                MYSQL_USER: ${{ secrets.MYSQL_USER }}
+                MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+                MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+            ports:
+                - 3306:3306
+            options: >- # Health check to wait until MySQL is ready
+                --health-cmd="mysqladmin ping -h localhost" 
+                --health-interval=10s 
+                --health-timeout=5s 
+                --health-retries=3
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv (uv is a modern Python package manager)
+        uses: astral-sh/setup-uv@v1
+        with:
+          version: 'latest'
+          enable-cache: true
+
+      - name: Create uv virtual environment
+        run: uv venv
+        working-directory: backend-django
+
+      - name: Synchronize python dependencies with uv.lock
+        run: uv sync
+        working-directory: backend-django
+
+      - name: Wait for MySQL to be ready
+        run: |
+          uv run scripts/wait_for_mysql.py
+
+      - name: Run Django Migrations
+        run: uv run manage.py migrate
+        env:
+          DJANGO_SETTINGS_MODULE: mysite.settings
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@localhost:3306/${{ secrets.MYSQL_DATABASE }}
+        working-directory: backend-django
+
+      - name: Run DjangoTests
+        run: uv run manage.py test
+        env:
+          DJANGO_SETTINGS_MODULE: mysite.settings
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@localhost:3306/${{ secrets.MYSQL_DATABASE }}
+        working-directory: backend-django

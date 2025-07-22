@@ -11,11 +11,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
 import sys
 import os
+import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -26,7 +29,7 @@ SECRET_KEY = 'django-insecure-i(air8d#yx8n596r*$fcw*_b*^r@xpb5m6dpzl2g)*0@jj1zal
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS: list[str] = []
+ALLOWED_HOSTS: list[str] = ['127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -75,15 +78,12 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'polls',
-        'USER': 'root',
-        'PASSWORD': 'CqyNxP7Kwml1QdPvNb5IvGVrj1k',
-        'HOST': 'localhost',
-        'PORT': '3306',
-    }
+    'default': dj_database_url.config(
+        default='mysql://dev_user:dev_password@127.0.0.1:3306/polls_dev_db',
+        conn_max_age=600,
+    ),
 }
+
 
 
 # Password validation
