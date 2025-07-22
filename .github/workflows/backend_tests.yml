@@ -64,6 +64,15 @@ jobs:
           uv run scripts/wait_for_mysql.py
         working-directory: backend-django
 
+      - name: Grant test user privileges
+        run: |
+          mysql -h 127.0.0.1 -u root -p"${{ secrets.MYSQL_ROOT_PASSWORD }}" -e "GRANT ALL PRIVILEGES ON *.* TO '${{ secrets.MYSQL_USER }}'@'%' WITH GRANT OPTION;"
+          mysql -h 127.0.0.1 -u root -p"${{ secrets.MYSQL_ROOT_PASSWORD }}" -e "FLUSH PRIVILEGES;"
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+        working-directory: backend-django
+
       - name: Run Django Migrations
         run: uv run manage.py migrate
         env:
