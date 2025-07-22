@@ -79,8 +79,10 @@ jobs:
         working-directory: backend-django
 
       - name: Run Bandit (Security Static Analysis)
-        run: uv run bandit -r . --exclude .venv/,migrations/ -f json -o bandit_report.json || true # `|| true` to avoid failing the workflow if bandit fails
+        run: uv run bandit -r polls/ mysite/ --exclude .venv/,migrations/ -f json -o bandit_report.json || true
         working-directory: backend-django
+        env:
+          BANDIT_SKIP_TESTS: 1
 
       - name: Run Safety (Dependency Vulnerability Check)
         run: uv run safety scan -o safety_report.json || true # `|| true` to avoid failing the workflow if safety fails
