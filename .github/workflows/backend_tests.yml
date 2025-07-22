@@ -93,6 +93,7 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: mysite.settings
           DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
         working-directory: backend-django
 
       - name: Run Django Tests with Coverage
@@ -100,6 +101,7 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: mysite.settings
           DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
         working-directory: backend-django
 
       - name: Generate Coverage Report
