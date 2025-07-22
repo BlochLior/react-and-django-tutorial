@@ -68,12 +68,12 @@ jobs:
         run: uv run manage.py migrate
         env:
           DJANGO_SETTINGS_MODULE: mysite.settings
-          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@localhost:3306/${{ secrets.MYSQL_DATABASE }}
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }}
         working-directory: backend-django
 
-      - name: Run DjangoTests
+      - name: Run Django Tests
         run: uv run manage.py test
         env:
           DJANGO_SETTINGS_MODULE: mysite.settings
-          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@localhost:3306/${{ secrets.MYSQL_DATABASE }}
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }}
         working-directory: backend-django
