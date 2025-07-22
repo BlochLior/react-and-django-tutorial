@@ -55,8 +55,8 @@ jobs:
         run: uv venv
         working-directory: backend-django
 
-      - name: Synchronize python dependencies with uv.lock
-        run: uv sync
+      - name: Synchronize python dependencies with uv.lock (including linting/security tools)
+        run: uv sync --dev
         working-directory: backend-django
 
       - name: Wait for MySQL to be ready
@@ -73,6 +73,21 @@ jobs:
           MYSQL_USER: ${{ secrets.MYSQL_USER }}
         working-directory: backend-django
 
+      # --- Start Linting & Security Checks ---
+      - name: Run Ruff (Linting & Formatting)
+        run: uv run ruff check .
+        working-directory: backend-django
+
+      - name: Run Bandit (Security Static Analysis)
+        run: uv run bandit -r . --exclude .venv/,migrations/ -f json -o bandit_report.json || true # `|| true` to avoid failing the workflow if bandit fails
+        working-directory: backend-django
+
+      - name: Run Safety (Dependency Vulnerability Check)
+        run: uv run safety scan -o safety_report.json || true # `|| true` to avoid failing the workflow if safety fails
+        working-directory: backend-django
+
+      # --- End Linting & Security Checks ---
+
       - name: Run Django Migrations
         run: uv run manage.py migrate
         env:
@@ -80,9 +95,23 @@ jobs:
           DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }}
         working-directory: backend-django
 
-      - name: Run Django Tests
-        run: uv run manage.py test
+      - name: Run Django Tests with Coverage
+        run: uv run coverage run manage.py test
         env:
           DJANGO_SETTINGS_MODULE: mysite.settings
           DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }}
         working-directory: backend-django
+
+      - name: Generate Coverage Report
+        run: |
+          uv run coverage report -m
+          uv run coverage html
+          uv run coverage xml
+        working-directory: backend-django
+
+      - name: Upload Coverage Report (Optional, for human review)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-report
+          path: backend-django/htmlcov
+          

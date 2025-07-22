@@ -1,0 +1,11 @@
+[run]
+source = .
+omit =
+    manage.py
+    */settings.py
+    */urls.py
+    */wsgi.py
+    */__init__.py
+    */migrations/*
+    */tests.py
+    # */admin.py -- uncomment this when and if django admin is being removed from usage.

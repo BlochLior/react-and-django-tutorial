@@ -1,4 +1,4 @@
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404
 # csrf exemption only for develelopment, in production should be removed
 from django.views.decorators.csrf import csrf_exempt 
 from django.utils import timezone
