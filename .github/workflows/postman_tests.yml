@@ -47,7 +47,7 @@ jobs:
         # Ensure the paths to your collection JSON are correct relative to the repo root
         # Assuming your collection is at 'backend/postman_tests/my_api_collection.json'
         run: |
-          newman run backend-django/postman_tests/Django Polls API.postman_collection.json \
+          newman run backend-django/postman_tests/Django_Polls_API.postman_collection.json \
             --reporters cli,htmlextra \
             --reporter-htmlextra-export newman-report.html
         # Newman automatically exits with a non-zero code if tests fail, causing the GitHub Actions step to fail.
