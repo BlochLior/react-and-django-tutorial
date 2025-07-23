@@ -5,9 +5,10 @@ on:
   push:
     branches:
       - main
+      - develop
     paths:
-      - 'backend-django/**' # Only run if changes are in the backend directory (or relevant API-related files)
-      - 'backend-django/postman_tests/**' # Or if changes are in the Postman test files themselves
+      - 'backend-django/**' # Make sure this matches your Django project root
+      - 'backend-django/postman_tests/**'
   pull_request:
     branches:
       - main
@@ -15,47 +16,84 @@ on:
     paths:
       - 'backend-django/**'
       - 'backend-django/postman_tests/**'
-  workflow_dispatch: # Allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   run-postman-tests:
-    runs-on: ubuntu-latest # Or a specific runner environment
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4 # Action to checkout your code
+        uses: actions/checkout@v4
+
+      # --- Django Backend Setup and Start ---
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12' # Use your specific Python version
+
+      - name: Install Python Dependencies (uv and project requirements)
+        # Assuming uv is used and requirements.txt is at backend-django/requirements.txt
+        run: |
+          pip install uv
+          uv venv
+          uv sync
+        # If not using uv:
+        # pip install -r backend-django/requirements.txt
+
+      - name: Run Django Migrations (if needed for tests)
+        # This creates the database schema required by your Django app.
+        # Adjust DJANGO_SETTINGS_MODULE to your project's settings file
+        run: |
+          uv run manage.py migrate
+        env:
+          DJANGO_SETTINGS_MODULE: mysite.settings # e.g., myproject.settings
+          # If your Django app uses a database like PostgreSQL or MySQL in CI,
+          # you'd typically set up a `services` block here or use `apt-get install`
+          # for SQLite (default) this step is sufficient.
+
+      - name: Start Django Backend Server in Background
+        # This starts your Django development server and keeps it running
+        # while Newman executes its requests.
+        # `nohup` prevents the process from being killed when the shell exits.
+        # `&` runs it in the background.
+        # `0.0.0.0` allows it to be accessed from any interface on the runner.
+        run: |
+          uv run manage.py runserver 0.0.0.0:8000 &
+
+      # --- Newman (Node.js) Setup and Run ---
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4 # Action to install Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '20' # Specify the Node.js version suitable for Newman (LTS is good)
+          node-version: '22' # Specify the Node.js version you tested Newman with locally
 
-      - name: Install Newman
-        run: npm install -g newman
-
-      - name: Install Newman HTML Reporter (Optional but Recommended)
-        # This provides a nice, visual HTML report of your test run.
-        run: npm install -g newman-reporter-htmlextra
-
-      - name: Display current directory (for debugging paths)
-        run: pwd
-      
-      - name: List files in project root (for debugging paths)
-        run: ls -R . # Lists all files recursively, useful for verifying paths
+      - name: Install Newman and HTML Reporter
+        run: |
+          npm install -g newman
+          npm install -g newman-reporter-htmlextra
 
       - name: Run Postman API Tests
         # Ensure the paths to your collection JSON are correct relative to the repo root
-        # Assuming your collection is at 'backend/postman_tests/my_api_collection.json'
+        # The URL in your Postman collection should still be `http://127.0.0.1:8000` or `http://localhost:8000`
+        # as Newman and Django are now running on the *same* ephemeral CI runner.
         run: |
           newman run backend-django/postman_tests/Django_Polls_API.postman_collection.json \
             --reporters cli,htmlextra \
             --reporter-htmlextra-export newman-report.html
-        # Newman automatically exits with a non-zero code if tests fail, causing the GitHub Actions step to fail.
 
-      - name: Upload Newman HTML Report (Optional)
-        # This makes the HTML report available as a downloadable artifact in the GitHub Actions run summary.
+      - name: Upload Newman HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: newman-html-report
           path: newman-report.html
-          retention-days: 7 # How long to keep the artifact
+          retention-days: 7
+
+      # --- Cleanup (Optional but Good Practice) ---
+      # This step ensures the Django server process is terminated
+      # even if earlier steps fail.
+      - name: Stop Django Backend Server
+        if: always() 
+        run: |
+          pkill -f "runserver 0.0.0.0:8000" || true 
