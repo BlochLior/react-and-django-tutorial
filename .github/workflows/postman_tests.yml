@@ -8,7 +8,7 @@ on:
       - develop
     paths:
       - 'backend-django/**'
-      - '.github/workflows/postman_tests.yml' # Keep this for changes to the workflow itself
+      - '.github/workflows/postman_tests.yml'
   pull_request:
     branches:
       - main
@@ -33,7 +33,7 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-cmd="mysqladmin ping -h localhost" # Changed to localhost for better consistency
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -55,20 +55,17 @@ jobs:
           uv venv
           uv sync
         working-directory: ./backend-django
+
       - name: Wait for MySQL to be Ready (using custom script)
         run: |
           uv run scripts/wait_for_mysql.py
-        working-directory: ./backend-django # Run from the backend-django directory
-        env: # Pass necessary database credentials to your script
-          DATABASE_NAME: ${{ secrets.MYSQL_DATABASE }}
-          DATABASE_USER: ${{ secrets.MYSQL_USER }}
-          DATABASE_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-          DATABASE_HOST: mysql # Use the service name as hostname
-          DATABASE_PORT: 3306
-          # If your wait_for_mysql.py imports Django settings,
-          # you might also need DJANGO_SETTINGS_MODULE and SECRET_KEY here
-          DJANGO_SETTINGS_MODULE: mysite.settings
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        working-directory: ./backend-django
+        env:
+          # Pass the full DATABASE_URL_SECRET, as wait_for_mysql.py parses it
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql:3306/${{ secrets.MYSQL_DATABASE }}
+          DJANGO_SETTINGS_MODULE: mysite.settings # Good to keep for Django setup context
+          SECRET_KEY: ${{ secrets.SECRET_KEY }} # Good to keep for Django setup context
+
       - name: Run Django Migrations
         run: |
           uv run manage.py migrate
@@ -76,28 +73,24 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: mysite.settings
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          DATABASE_NAME: ${{ secrets.MYSQL_DATABASE }}
-          DATABASE_USER: ${{ secrets.MYSQL_USER }}
-          DATABASE_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-          DATABASE_HOST: mysql
-          DATABASE_PORT: 3306
+          # Pass the full DATABASE_URL_SECRET, as settings.py parses it
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql:3306/${{ secrets.MYSQL_DATABASE }}
 
       - name: Start Django Backend Server in Background
         run: |
-          uv run manage.py runserver 0.0.0.0:8000 &
+          nohup uv run manage.py runserver 0.0.0.0:8000 &
+          echo "Waiting for Django server to start..."
+          sleep 10
+          echo "Django server should be running now."
         working-directory: ./backend-django
         env:
           DJANGO_SETTINGS_MODULE: mysite.settings
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           DEBUG: "False" # It's good practice to set DEBUG to False in CI
-          DATABASE_NAME: ${{ secrets.MYSQL_DATABASE }}
-          DATABASE_USER: ${{ secrets.MYSQL_USER }}
-          DATABASE_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-          DATABASE_HOST: mysql
-          DATABASE_PORT: 3306
+          # Pass the full DATABASE_URL_SECRET
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql:3306/${{ secrets.MYSQL_DATABASE }}
 
       # --- Newman (Node.js) Setup and Run ---
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:

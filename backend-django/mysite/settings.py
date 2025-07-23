@@ -83,11 +83,14 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='mysql://dev_user:dev_password@127.0.0.1:3306/polls_dev_db',
+        default=os.getenv('DATABASE_URL'),
         conn_max_age=600,
     ),
 }
 
+# Add a check to ensure DATABASE_URL is actually loaded for non-testing environments
+if not os.environ.get('DATABASE_URL'):
+    raise ImproperlyConfigured("DATABASE_URL is not found in environment variables. Ensure .env is loaded or DATABASE_URL is set.")
 
 
 # Password validation

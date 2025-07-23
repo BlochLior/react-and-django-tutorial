@@ -1,3 +1,4 @@
+# .github/workflows/backend_tests.yml
 name: Django Backend CI
 
 on:
@@ -22,25 +23,25 @@ jobs:
   test:
     runs-on: ubuntu-latest
     services:
-        mysql:
-            image: mysql:8.0
-            env:
-                MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-                MYSQL_USER: ${{ secrets.MYSQL_USER }}
-                MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-                MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-            ports:
-                - 3306:3306
-            options: >- # Health check to wait until MySQL is ready
-                --health-cmd="mysqladmin ping -h localhost" 
-                --health-interval=10s 
-                --health-timeout=5s 
-                --health-retries=3
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+        ports:
+          - 3306:3306
+        options: >- # Health check to wait until MySQL is ready
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -63,9 +64,15 @@ jobs:
         run: |
           uv run scripts/wait_for_mysql.py
         working-directory: backend-django
+        env:
+          # Pass the full DATABASE_URL_SECRET, as wait_for_mysql.py parses it
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql:3306/${{ secrets.MYSQL_DATABASE }}
+          DJANGO_SETTINGS_MODULE: mysite.settings # Good to keep for Django setup context
+          SECRET_KEY: ${{ secrets.SECRET_KEY }} # Good to keep for Django setup context
 
       - name: Grant test user privileges
         run: |
+          # Connect to MySQL service using its mapped port on localhost from the runner
           mysql -h 127.0.0.1 -u root -p"${{ secrets.MYSQL_ROOT_PASSWORD }}" -e "GRANT ALL PRIVILEGES ON *.* TO '${{ secrets.MYSQL_USER }}'@'%' WITH GRANT OPTION;"
           mysql -h 127.0.0.1 -u root -p"${{ secrets.MYSQL_ROOT_PASSWORD }}" -e "FLUSH PRIVILEGES;"
         env:
@@ -85,7 +92,7 @@ jobs:
           BANDIT_SKIP_TESTS: 1
 
       - name: Run Safety (Dependency Vulnerability Check)
-        run: uv run safety scan -o safety_report.json || true # `|| true` to avoid failing the workflow if safety fails
+        run: uv run safety scan -o safety_report.json || true
         working-directory: backend-django
 
       # --- End Linting & Security Checks ---
@@ -94,16 +101,18 @@ jobs:
         run: uv run manage.py migrate
         env:
           DJANGO_SETTINGS_MODULE: mysite.settings
-          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          # Pass the full DATABASE_URL_SECRET
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql:3306/${{ secrets.MYSQL_DATABASE }}
         working-directory: backend-django
 
       - name: Run Django Tests with Coverage
         run: uv run coverage run manage.py test
         env:
           DJANGO_SETTINGS_MODULE: mysite.settings
-          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          # Pass the full DATABASE_URL_SECRET
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql:3306/${{ secrets.MYSQL_DATABASE }}
         working-directory: backend-django
 
       - name: Generate Coverage Report
@@ -118,4 +127,3 @@ jobs:
         with:
           name: coverage-html-report
           path: backend-django/htmlcov
-          
