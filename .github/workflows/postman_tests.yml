@@ -62,19 +62,19 @@ jobs:
         working-directory: ./backend-django
         env:
           # Pass the full DATABASE_URL_SECRET, as wait_for_mysql.py parses it
-          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql:3306/${{ secrets.MYSQL_DATABASE }}
-          DJANGO_SETTINGS_MODULE: mysite.settings # Good to keep for Django setup context
-          SECRET_KEY: ${{ secrets.SECRET_KEY }} # Good to keep for Django setup context
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }} # <-- CHANGE THIS LINE
+          DJANGO_SETTINGS_MODULE: mysite.settings
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
 
       - name: Run Django Migrations
         run: |
           uv run manage.py migrate
         working-directory: ./backend-django
         env:
-          DJANGO_SETTINGS_MODULE: mysite.settings
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          # Pass the full DATABASE_URL_SECRET, as settings.py parses it
-          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql:3306/${{ secrets.MYSQL_DATABASE }}
+            DJANGO_SETTINGS_MODULE: mysite.settings
+            SECRET_KEY: ${{ secrets.SECRET_KEY }}
+            # Pass the full DATABASE_URL_SECRET, as settings.py parses it
+            DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }} # <-- CHANGE THIS LINE
 
       - name: Start Django Backend Server in Background
         run: |
@@ -86,9 +86,9 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: mysite.settings
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          DEBUG: "False" # It's good practice to set DEBUG to False in CI
+          DEBUG: "False"
           # Pass the full DATABASE_URL_SECRET
-          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql:3306/${{ secrets.MYSQL_DATABASE }}
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }} # <-- CHANGE THIS LINE
 
       # --- Newman (Node.js) Setup and Run ---
       - name: Set up Node.js
