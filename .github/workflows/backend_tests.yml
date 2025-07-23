@@ -65,14 +65,11 @@ jobs:
           uv run scripts/wait_for_mysql.py
         working-directory: backend-django
         env:
-          # Pass the full DATABASE_URL_SECRET, as wait_for_mysql.py parses it
-          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql:3306/${{ secrets.MYSQL_DATABASE }}
-          DJANGO_SETTINGS_MODULE: mysite.settings # Good to keep for Django setup context
-          SECRET_KEY: ${{ secrets.SECRET_KEY }} # Good to keep for Django setup context
-
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }} # <-- CHANGE THIS LINE
+          DJANGO_SETTINGS_MODULE: mysite.settings
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
       - name: Grant test user privileges
         run: |
-          # Connect to MySQL service using its mapped port on localhost from the runner
           mysql -h 127.0.0.1 -u root -p"${{ secrets.MYSQL_ROOT_PASSWORD }}" -e "GRANT ALL PRIVILEGES ON *.* TO '${{ secrets.MYSQL_USER }}'@'%' WITH GRANT OPTION;"
           mysql -h 127.0.0.1 -u root -p"${{ secrets.MYSQL_ROOT_PASSWORD }}" -e "FLUSH PRIVILEGES;"
         env:
@@ -102,8 +99,7 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: mysite.settings
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          # Pass the full DATABASE_URL_SECRET
-          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql:3306/${{ secrets.MYSQL_DATABASE }}
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }} # <-- CHANGE THIS LINE
         working-directory: backend-django
 
       - name: Run Django Tests with Coverage
@@ -111,8 +107,7 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: mysite.settings
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          # Pass the full DATABASE_URL_SECRET
-          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@mysql:3306/${{ secrets.MYSQL_DATABASE }}
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }} # <-- CHANGE THIS LINE
         working-directory: backend-django
 
       - name: Generate Coverage Report
