@@ -9,6 +9,7 @@ on:
     paths:
       - 'backend-django/**' # Make sure this matches your Django project root
       - 'backend-django/postman_tests/**'
+      - '.github/workflows/postman_tests.yml'
   pull_request:
     branches:
       - main
@@ -16,6 +17,7 @@ on:
     paths:
       - 'backend-django/**'
       - 'backend-django/postman_tests/**'
+      - '.github/workflows/postman_tests.yml'
   workflow_dispatch:
 
 jobs:
