@@ -17,19 +17,32 @@ from .schemas import QuestionSchema, ChoiceSchema, VoteSchema
 
 @api_view(['GET'])
 def question_list_api(request):
+    print("\n--- API Request Debug ---")
+
+    print(f"Full request.query_params dictionary: {request.query_params}")
+    print(f"Raw value for 'show_future' key: {request.query_params.get('show_future', 'KEY_NOT_FOUND')}")
     # Starts with all questions
     questions = Question.objects.all()
+    print(f"Initial total questions: {questions.count()}")
 
     # Check for query parameters from the client
     show_future_questions = request.query_params.get('show_future', 'false').lower() == 'true'
     show_choiceless_questions = request.query_params.get('show_choiceless', 'false').lower() == 'true'
 
+    print(f"show_future_questions: {show_future_questions}")
+    print(f"show_choiceless_questions: {show_choiceless_questions}")
+
+
     # Conditionally apply filters based on the parameters
     if not show_future_questions:
+        print("Applying filter: pub_date <= now()")
         questions = questions.filter(pub_date__lte=timezone.now())
+        print(f"Questions after pub_date filter: {questions.count()}")
     if not show_choiceless_questions:
+        print("Applying filter: choice_count >= 1")
         questions = questions.annotate(choice_count=Count('choice')).filter(choice_count__gte=1)
-    
+        print(f"Questions after choiceless filter: {questions.count()}")
+
     # Build the response data
     question_data = []
     for q in questions:
@@ -47,6 +60,8 @@ def question_list_api(request):
         }
         # Validate and dump the data
         question_data.append(QuestionSchema.model_validate(question_dict).model_dump())
+    
+    print("--- End API Request Debug ---\n")
     return Response(question_data, status=status.HTTP_200_OK)
 
 @api_view(['GET'])

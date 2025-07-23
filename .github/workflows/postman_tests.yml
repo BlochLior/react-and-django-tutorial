@@ -1,0 +1,61 @@
+# .github/workflows/postman_tests.yml
+name: API E2E Tests (Postman)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend-django/**' # Only run if changes are in the backend directory (or relevant API-related files)
+      - 'backend-django/postman_tests/**' # Or if changes are in the Postman test files themselves
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'backend-django/**'
+      - 'backend-django/postman_tests/**'
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  run-postman-tests:
+    runs-on: ubuntu-latest # Or a specific runner environment
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4 # Action to checkout your code
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4 # Action to install Node.js
+        with:
+          node-version: '20' # Specify the Node.js version suitable for Newman (LTS is good)
+
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Install Newman HTML Reporter (Optional but Recommended)
+        # This provides a nice, visual HTML report of your test run.
+        run: npm install -g newman-reporter-htmlextra
+
+      - name: Display current directory (for debugging paths)
+        run: pwd
+      
+      - name: List files in project root (for debugging paths)
+        run: ls -R . # Lists all files recursively, useful for verifying paths
+
+      - name: Run Postman API Tests
+        # Ensure the paths to your collection JSON are correct relative to the repo root
+        # Assuming your collection is at 'backend/postman_tests/my_api_collection.json'
+        run: |
+          newman run backend-django/postman_tests/Django Polls API.postman_collection.json \
+            --reporters cli,htmlextra \
+            --reporter-htmlextra-export newman-report.html
+        # Newman automatically exits with a non-zero code if tests fail, causing the GitHub Actions step to fail.
+
+      - name: Upload Newman HTML Report (Optional)
+        # This makes the HTML report available as a downloadable artifact in the GitHub Actions run summary.
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-html-report
+          path: newman-report.html
+          retention-days: 7 # How long to keep the artifact

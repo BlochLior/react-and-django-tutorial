@@ -1,0 +1,954 @@
+{
+	"info": {
+		"_postman_id": "44a482a8-856b-4e28-889b-c4d76437b05d",
+		"name": "Django Polls API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "44250255"
+	},
+	"item": [
+		{
+			"name": "Get All Questions",
+			"item": [
+				{
+					"name": "Get All Questions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// This script runs after the API request has received a response.\r",
+									"\r",
+									"// Retrieve and evaluate the shared function and schemas from collection variables\r",
+									"const validateObjectAgainstSchema = eval(pm.collectionVariables.get(\"validateObjectAgainstSchemaFunc\"));\r",
+									"const expectedQuestionSchema = JSON.parse(pm.collectionVariables.get(\"expectedQuestionSchemaString\"));\r",
+									"const expectedChoiceSchema = JSON.parse(pm.collectionVariables.get(\"expectedChoiceSchemaString\"));\r",
+									"\r",
+									"// --- Main Test Execution ---\r",
+									"\r",
+									"pm.test(\"Status code is 200 OK\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response is valid JSON\", function () {\r",
+									"    try {\r",
+									"        pm.response.json();\r",
+									"        pm.expect(true, \"Response body is valid JSON\").to.be.true;\r",
+									"    } catch (e) {\r",
+									"        pm.expect.fail(`Response body is not valid JSON: ${e.message}`);\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response body is an array of questions\", function () {\r",
+									"    const jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData, \"Response body should be an array\").to.be.an('array');\r",
+									"    pm.expect(jsonData.length, \"Questions array should not be empty for default view\").to.be.above(0);\r",
+									"\r",
+									"    const jsNow = new Date();\r",
+									"\r",
+									"    jsonData.forEach((question, questionIndex) => {\r",
+									"        pm.test(`Question ${questionIndex} has valid properties and structure`, function () {\r",
+									"            // Validate the question object itself using the globally available helper\r",
+									"            validateObjectAgainstSchema(question, expectedQuestionSchema, 'Question', questionIndex);\r",
+									"\r",
+									"            // Specific check for default filter: pub_date should be in the past or present\r",
+									"            const pubDate = new Date(question.pub_date);\r",
+									"            pm.expect(pubDate.getTime(), `Question ${questionIndex}: pub_date (${question.pub_date}) should not be in the future for default view`).to.be.at.most(jsNow.getTime());\r",
+									"\r",
+									"            // Specific check for default filter: must have choices\r",
+									"            pm.expect(question.choices, `Question ${questionIndex}: 'choices' array should exist`).to.exist;\r",
+									"            pm.expect(question.choices, `Question ${questionIndex}: 'choices' should be an array`).to.be.an('array');\r",
+									"            pm.expect(question.choices.length, `Question ${questionIndex}: 'choices' array should not be empty for default view`).to.be.above(0);\r",
+									"\r",
+									"\r",
+									"            pm.test(`Question ${questionIndex}: 'choices' array validation`, function () {\r",
+									"                const choices = question.choices;\r",
+									"                choices.forEach((choice, choiceIndex) => {\r",
+									"                    pm.test(`Question ${questionIndex}, Choice ${choiceIndex} has valid properties`, function () {\r",
+									"                        // Validate each choice using the globally available helper\r",
+									"                        validateObjectAgainstSchema(choice, expectedChoiceSchema, 'Choice', choiceIndex);\r",
+									"                    });\r",
+									"                });\r",
+									"            });\r",
+									"        });\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/polls/api/questions/",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"polls",
+								"api",
+								"questions",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Questions - All Filters",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// This script runs after the API request has received a response.\r",
+									"\r",
+									"// Retrieve and evaluate the shared function and schemas from collection variables\r",
+									"const validateObjectAgainstSchema = eval(pm.collectionVariables.get(\"validateObjectAgainstSchemaFunc\"));\r",
+									"const expectedQuestionSchema = JSON.parse(pm.collectionVariables.get(\"expectedQuestionSchemaString\"));\r",
+									"const expectedChoiceSchema = JSON.parse(pm.collectionVariables.get(\"expectedChoiceSchemaString\"));\r",
+									"\r",
+									"// --- Main Test Execution ---\r",
+									"\r",
+									"pm.test(\"Status code is 200 OK\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response is valid JSON\", function () {\r",
+									"    try {\r",
+									"        pm.response.json();\r",
+									"        pm.expect(true, \"Response body is valid JSON\").to.be.true;\r",
+									"    } catch (e) {\r",
+									"        pm.expect.fail(`Response body is not valid JSON: ${e.message}`);\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response body is an array of all questions (future and choiceless included)\", function () {\r",
+									"    const jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData, \"Response body should be an array\").to.be.an('array');\r",
+									"    pm.expect(jsonData.length, \"Questions array should not be empty\").to.be.above(0);\r",
+									"\r",
+									"    let foundFutureQuestion = false;\r",
+									"    let foundChoicelessQuestion = false;\r",
+									"    const jsNow = new Date();\r",
+									"\r",
+									"    jsonData.forEach((question, questionIndex) => {\r",
+									"        pm.test(`Question ${questionIndex} has valid properties and structure`, function () {\r",
+									"            validateObjectAgainstSchema(question, expectedQuestionSchema, 'Question', questionIndex);\r",
+									"\r",
+									"            const pubDate = new Date(question.pub_date);\r",
+									"            if (pubDate.getTime() > jsNow.getTime()) {\r",
+									"                foundFutureQuestion = true;\r",
+									"            }\r",
+									"            if (question.choices && question.choices.length === 0) {\r",
+									"                foundChoicelessQuestion = true;\r",
+									"            }\r",
+									"\r",
+									"            pm.test(`Question ${questionIndex}: 'choices' array validation`, function () {\r",
+									"                const choices = question.choices;\r",
+									"                pm.expect(choices, `Question ${questionIndex}: 'choices' property should exist`).to.exist;\r",
+									"                pm.expect(choices, `Question ${questionIndex}: 'choices' should be an array`).to.be.an('array');\r",
+									"\r",
+									"                choices.forEach((choice, choiceIndex) => {\r",
+									"                    pm.test(`Question ${questionIndex}, Choice ${choiceIndex} has valid properties`, function () {\r",
+									"                        validateObjectAgainstSchema(choice, expectedChoiceSchema, 'Choice', choiceIndex);\r",
+									"                    });\r",
+									"                });\r",
+									"            });\r",
+									"        });\r",
+									"    });\r",
+									"    pm.expect(foundFutureQuestion, \"Expected to find at least one future question when show_future=true\").to.be.true;\r",
+									"    pm.expect(foundChoicelessQuestion, \"Expected to find at least one choiceless question when show_choiceless=true\").to.be.true;\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/polls/api/questions/?show_future=true&show_choiceless=true",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"polls",
+								"api",
+								"questions",
+								""
+							],
+							"query": [
+								{
+									"key": "show_future",
+									"value": "true"
+								},
+								{
+									"key": "show_choiceless",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Questions - Show Choiceless",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// This script runs after the API request has received a response.\r",
+									"\r",
+									"// Retrieve and evaluate the shared function and schemas from collection variables\r",
+									"const validateObjectAgainstSchema = eval(pm.collectionVariables.get(\"validateObjectAgainstSchemaFunc\"));\r",
+									"const expectedQuestionSchema = JSON.parse(pm.collectionVariables.get(\"expectedQuestionSchemaString\"));\r",
+									"const expectedChoiceSchema = JSON.parse(pm.collectionVariables.get(\"expectedChoiceSchemaString\"));\r",
+									"\r",
+									"// --- Main Test Execution ---\r",
+									"\r",
+									"pm.test(\"Status code is 200 OK\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response is valid JSON\", function () {\r",
+									"    try {\r",
+									"        pm.response.json();\r",
+									"        pm.expect(true, \"Response body is valid JSON\").to.be.true;\r",
+									"    } catch (e) {\r",
+									"        pm.expect.fail(`Response body is not valid JSON: ${e.message}`);\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response body is an array of questions and includes choiceless questions\", function () {\r",
+									"    const jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData, \"Response body should be an array\").to.be.an('array');\r",
+									"    pm.expect(jsonData.length, \"Questions array should not be empty\").to.be.above(0);\r",
+									"\r",
+									"    let foundChoicelessQuestion = false;\r",
+									"    const jsNow = new Date();\r",
+									"\r",
+									"    jsonData.forEach((question, questionIndex) => {\r",
+									"        pm.test(`Question ${questionIndex} has valid properties and structure`, function () {\r",
+									"            validateObjectAgainstSchema(question, expectedQuestionSchema, 'Question', questionIndex);\r",
+									"\r",
+									"            // Specific check for default filter: pub_date should be in the past or present (as show_future is false by default)\r",
+									"            const pubDate = new Date(question.pub_date);\r",
+									"            pm.expect(pubDate.getTime(), `Question ${questionIndex}: pub_date (${question.pub_date}) should not be in the future for this view`).to.be.at.most(jsNow.getTime());\r",
+									"\r",
+									"\r",
+									"            if (question.choices && question.choices.length === 0) {\r",
+									"                foundChoicelessQuestion = true;\r",
+									"            }\r",
+									"\r",
+									"            pm.test(`Question ${questionIndex}: 'choices' array validation`, function () {\r",
+									"                const choices = question.choices;\r",
+									"                // Note: For choiceless questions, this array can be empty, so we don't assert length > 0 here.\r",
+									"                pm.expect(choices, `Question ${questionIndex}: 'choices' property should exist`).to.exist;\r",
+									"                pm.expect(choices, `Question ${questionIndex}: 'choices' should be an array`).to.be.an('array');\r",
+									"\r",
+									"                choices.forEach((choice, choiceIndex) => {\r",
+									"                    pm.test(`Question ${questionIndex}, Choice ${choiceIndex} has valid properties`, function () {\r",
+									"                        validateObjectAgainstSchema(choice, expectedChoiceSchema, 'Choice', choiceIndex);\r",
+									"                    });\r",
+									"                });\r",
+									"            });\r",
+									"        });\r",
+									"    });\r",
+									"    pm.expect(foundChoicelessQuestion, \"Expected to find at least one choiceless question when show_choiceless=true\").to.be.true;\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/polls/api/questions/?show_choiceless=true",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"polls",
+								"api",
+								"questions",
+								""
+							],
+							"query": [
+								{
+									"key": "show_choiceless",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Questions - Show Future",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// This script runs after the API request has received a response.\r",
+									"\r",
+									"// Retrieve and evaluate the shared function and schemas from collection variables\r",
+									"const validateObjectAgainstSchema = eval(pm.collectionVariables.get(\"validateObjectAgainstSchemaFunc\"));\r",
+									"const expectedQuestionSchema = JSON.parse(pm.collectionVariables.get(\"expectedQuestionSchemaString\"));\r",
+									"const expectedChoiceSchema = JSON.parse(pm.collectionVariables.get(\"expectedChoiceSchemaString\"));\r",
+									"\r",
+									"// --- Main Test Execution ---\r",
+									"\r",
+									"pm.test(\"Status code is 200 OK\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response is valid JSON\", function () {\r",
+									"    try {\r",
+									"        pm.response.json();\r",
+									"        pm.expect(true, \"Response body is valid JSON\").to.be.true;\r",
+									"    } catch (e) {\r",
+									"        pm.expect.fail(`Response body is not valid JSON: ${e.message}`);\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response body is an array of questions and includes future questions\", function () {\r",
+									"    const jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData, \"Response body should be an array\").to.be.an('array');\r",
+									"    pm.expect(jsonData.length, \"Questions array should not be empty\").to.be.above(0);\r",
+									"\r",
+									"    let foundFutureQuestion = false;\r",
+									"    const jsNow = new Date();\r",
+									"\r",
+									"    jsonData.forEach((question, questionIndex) => {\r",
+									"        pm.test(`Question ${questionIndex} has valid properties and structure`, function () {\r",
+									"            validateObjectAgainstSchema(question, expectedQuestionSchema, 'Question', questionIndex);\r",
+									"\r",
+									"            const pubDate = new Date(question.pub_date);\r",
+									"            if (pubDate.getTime() > jsNow.getTime()) {\r",
+									"                foundFutureQuestion = true;\r",
+									"            }\r",
+									"\r",
+									"            // Specific check for default filter: must have choices (as show_choiceless is false by default)\r",
+									"            pm.expect(question.choices, `Question ${questionIndex}: 'choices' array should exist`).to.exist;\r",
+									"            pm.expect(question.choices, `Question ${questionIndex}: 'choices' should be an array`).to.be.an('array');\r",
+									"            pm.expect(question.choices.length, `Question ${questionIndex}: 'choices' array should not be empty`).to.be.above(0);\r",
+									"\r",
+									"\r",
+									"            pm.test(`Question ${questionIndex}: 'choices' array validation`, function () {\r",
+									"                const choices = question.choices;\r",
+									"                choices.forEach((choice, choiceIndex) => {\r",
+									"                    pm.test(`Question ${questionIndex}, Choice ${choiceIndex} has valid properties`, function () {\r",
+									"                        validateObjectAgainstSchema(choice, expectedChoiceSchema, 'Choice', choiceIndex);\r",
+									"                    });\r",
+									"                });\r",
+									"            });\r",
+									"        });\r",
+									"    });\r",
+									"    pm.expect(foundFutureQuestion, \"Expected to find at least one future question when show_future=true\").to.be.true;\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/polls/api/questions/?show_future=true",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"polls",
+								"api",
+								"questions",
+								""
+							],
+							"query": [
+								{
+									"key": "show_future",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Get Single Question",
+			"item": [
+				{
+					"name": "Get Single Question - Success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// This script runs after the API request has received a response.\r",
+									"\r",
+									"// Retrieve and evaluate the shared function and schemas from collection variables\r",
+									"const validateObjectAgainstSchema = eval(pm.collectionVariables.get(\"validateObjectAgainstSchemaFunc\"));\r",
+									"const expectedQuestionSchema = JSON.parse(pm.collectionVariables.get(\"expectedQuestionSchemaString\"));\r",
+									"const expectedChoiceSchema = JSON.parse(pm.collectionVariables.get(\"expectedChoiceSchemaString\"));\r",
+									"\r",
+									"// --- Main Test Execution ---\r",
+									"\r",
+									"pm.test(\"Status code is 200 OK\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response is valid JSON\", function () {\r",
+									"    try {\r",
+									"        pm.response.json();\r",
+									"        pm.expect(true, \"Response body is valid JSON\").to.be.true;\r",
+									"    } catch (e) {\r",
+									"        pm.expect.fail(`Response body is not valid JSON: ${e.message}`);\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response body is a single question object\", function () {\r",
+									"    const jsonData = pm.response.json();\r",
+									"\r",
+									"    // Check if the top-level response is an object (not an array)\r",
+									"    pm.expect(jsonData, \"Response body should be a single object\").to.be.an('object');\r",
+									"\r",
+									"    // Validate the single question object against the schema\r",
+									"    validateObjectAgainstSchema(jsonData, expectedQuestionSchema, 'Question');\r",
+									"\r",
+									"    // Extract the ID from the request URL to compare with the response ID\r",
+									"    const requestUrl = pm.request.url.toString();\r",
+									"    // Split the URL by '/' and filter out any empty strings (handles trailing slashes robustly)\r",
+									"    const pathSegments = requestUrl.split('/').filter(segment => segment !== '');\r",
+									"    // The ID should be the last segment in the filtered path\r",
+									"    const expectedId = parseInt(pathSegments[pathSegments.length - 1]);\r",
+									"\r",
+									"    pm.expect(jsonData.id, `Question ID in response (${jsonData.id}) should match ID in request URL (${expectedId})`).to.equal(expectedId);\r",
+									"\r",
+									"    // Validate choices within the single question\r",
+									"    pm.test(`Question choices validation`, function () {\r",
+									"        const choices = jsonData.choices;\r",
+									"        pm.expect(choices, `'choices' property should exist`).to.exist;\r",
+									"        pm.expect(choices, `'choices' should be an array`).to.be.an('array');\r",
+									"        // For detail view, it's expected to have choices if the question has them,\r",
+									"        // but the API doesn't filter choiceless questions here, so length > 0 is not mandatory.\r",
+									"\r",
+									"        choices.forEach((choice, choiceIndex) => {\r",
+									"            pm.test(`Choice ${choiceIndex} has valid properties`, function () {\r",
+									"                validateObjectAgainstSchema(choice, expectedChoiceSchema, 'Choice', choiceIndex);\r",
+									"            });\r",
+									"        });\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/polls/api/questions/1",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"polls",
+								"api",
+								"questions",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Single Question - 404 Not Found",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// This script runs after the API request has received a response.\r",
+									"\r",
+									"// --- Main Test Execution ---\r",
+									"\r",
+									"pm.test(\"Status code is 404 Not Found\", function () {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response body contains 'No Question matches the given query.' detail message\", function () {\r",
+									"    const jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData, \"Response body should be an object\").to.be.an('object');\r",
+									"    pm.expect(jsonData.detail, \"Response body should contain a 'detail' property\").to.exist;\r",
+									"    pm.expect(jsonData.detail).to.be.a('string');\r",
+									"    pm.expect(jsonData.detail).to.equal('No Question matches the given query.'); // Updated expected message\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/polls/api/questions/999",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"polls",
+								"api",
+								"questions",
+								"999"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Vote for Choice",
+			"item": [
+				{
+					"name": "Vote for Choice - Success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// This script runs after the API request has received a response.\r",
+									"\r",
+									"// Retrieve and evaluate the shared function and schemas from collection variables\r",
+									"const validateObjectAgainstSchema = eval(pm.collectionVariables.get(\"validateObjectAgainstSchemaFunc\"));\r",
+									"const expectedQuestionSchema = JSON.parse(pm.collectionVariables.get(\"expectedQuestionSchemaString\"));\r",
+									"const expectedChoiceSchema = JSON.parse(pm.collectionVariables.get(\"expectedChoiceSchemaString\"));\r",
+									"\r",
+									"// --- Main Test Execution ---\r",
+									"\r",
+									"pm.test(\"Status code is 200 OK\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response is valid JSON\", function () {\r",
+									"    try {\r",
+									"        pm.response.json();\r",
+									"        pm.expect(true, \"Response body is valid JSON\").to.be.true;\r",
+									"    } catch (e) {\r",
+									"        pm.expect.fail(`Response body is not valid JSON: ${e.message}`);\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response body is the updated question object with incremented votes\", function () {\r",
+									"    const jsonData = pm.response.json();\r",
+									"\r",
+									"    // Check if the top-level response is an object (the updated question)\r",
+									"    pm.expect(jsonData, \"Response body should be a single question object\").to.be.an('object');\r",
+									"\r",
+									"    // Validate the updated question object against the schema\r",
+									"    validateObjectAgainstSchema(jsonData, expectedQuestionSchema, 'Updated Question');\r",
+									"\r",
+									"    // Get the choice_id that was sent in the request body\r",
+									"    const requestBody = pm.request.body.raw ? JSON.parse(pm.request.body.raw) : {};\r",
+									"    const votedChoiceId = requestBody.choice_id;\r",
+									"\r",
+									"    pm.expect(votedChoiceId, \"Request body must contain 'choice_id'\").to.exist;\r",
+									"    pm.expect(typeof votedChoiceId, \"choice_id in request body must be a number\").to.equal('number');\r",
+									"\r",
+									"    // Find the voted choice in the response\r",
+									"    const votedChoiceInResponse = jsonData.choices.find(choice => choice.id === votedChoiceId);\r",
+									"\r",
+									"    pm.expect(votedChoiceInResponse, `Voted choice with ID ${votedChoiceId} not found in response`).to.exist;\r",
+									"\r",
+									"    // Verify the votes property exists and is a non-negative integer.\r",
+									"    // For a true increment verification, you'd need to capture the initial state\r",
+									"    // (e.g., in a pre-request script or a preceding GET request in a collection run).\r",
+									"    pm.expect(votedChoiceInResponse.votes, `Votes for choice ${votedChoiceId} should be a non-negative integer`).to.be.a('number').and.to.be.at.least(0);\r",
+									"\r",
+									"    // Validate all choices within the updated question\r",
+									"    pm.test(`Updated question choices validation`, function () {\r",
+									"        const choices = jsonData.choices;\r",
+									"        pm.expect(choices, `'choices' property should exist`).to.exist;\r",
+									"        pm.expect(choices, `'choices' should be an array`).to.be.an('array');\r",
+									"        pm.expect(choices.length, `'choices' array should not be empty`).to.be.above(0);\r",
+									"\r",
+									"        choices.forEach((choice, choiceIndex) => {\r",
+									"            pm.test(`Choice ${choiceIndex} has valid properties`, function () {\r",
+									"                validateObjectAgainstSchema(choice, expectedChoiceSchema, 'Choice', choiceIndex);\r",
+									"            });\r",
+									"        });\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"choice_id\": 18\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseURL}}/polls/api/questions/1/vote/",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"polls",
+								"api",
+								"questions",
+								"1",
+								"vote",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Vote for Choice - Invalid Body",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// This script runs after the API request has received a response.\r",
+									"\r",
+									"// --- Main Test Execution ---\r",
+									"\r",
+									"pm.test(\"Status code is 400 Bad Request\", function () {\r",
+									"    pm.response.to.have.status(400);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response body contains 'Invalid request body' error message\", function () {\r",
+									"    const jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData, \"Response body should be an object\").to.be.an('object');\r",
+									"    pm.expect(jsonData.error, \"Response body should contain an 'error' property\").to.exist;\r",
+									"    pm.expect(jsonData.error).to.be.a('string');\r",
+									"    pm.expect(jsonData.error).to.equal('Invalid request body');\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"my_choice_id\": 101\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseURL}}/polls/api/questions/1/vote/",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"polls",
+								"api",
+								"questions",
+								"1",
+								"vote",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Vote for Choice - Invalid Choice ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// This script runs after the API request has received a response.\r",
+									"\r",
+									"// --- Main Test Execution ---\r",
+									"\r",
+									"pm.test(\"Status code is 404 Not Found\", function () {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response body contains 'Choice not found for this question' error message\", function () {\r",
+									"    const jsonData = pm.response.json();\r",
+									"    pm.expect(jsonData, \"Response body should be an object\").to.be.an('object');\r",
+									"    pm.expect(jsonData.error, \"Response body should contain an 'error' property\").to.exist;\r",
+									"    pm.expect(jsonData.error).to.be.a('string');\r",
+									"    pm.expect(jsonData.error).to.equal('Choice not found for this question');\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"choice_id\": 9999\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseURL}}/polls/api/questions/1/vote/",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"polls",
+								"api",
+								"questions",
+								"1",
+								"vote",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					"// This script runs BEFORE every request in this collection.\r",
+					"// It prepares common schemas and helper functions as strings,\r",
+					"// storing them in collection variables for later evaluation in Tests scripts.\r",
+					"\r",
+					"// Define schemas as regular JS objects\r",
+					"const expectedQuestionSchemaDef = {\r",
+					"    id: {\r",
+					"        type: 'number',\r",
+					"        required: true,\r",
+					"        validation: (value) => Number.isInteger(value) && value > 0,\r",
+					"        errorMessage: (value) => `should be a positive integer (got ${value})`\r",
+					"    },\r",
+					"    question_text: {\r",
+					"        type: 'string',\r",
+					"        required: true,\r",
+					"        validation: (value) => value.trim().length > 0,\r",
+					"        errorMessage: (value) => `should be a non-empty string (got \"${value}\")`\r",
+					"    },\r",
+					"    pub_date: {\r",
+					"        type: 'string',\r",
+					"        required: true,\r",
+					"        validation: (value) => {\r",
+					"            const iso8601Regex = /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}Z$/;\r",
+					"            return iso8601Regex.test(value);\r",
+					"        },\r",
+					"        errorMessage: (value) => `should be in \"YYYY-MM-DDTHH:MM:SS.SSSSSSZ\" format (got \"${value}\")`\r",
+					"    },\r",
+					"    choices: {\r",
+					"        type: 'array',\r",
+					"        required: true,\r",
+					"        validation: (value) => Array.isArray(value) && value.length > 0, // Must be an array and have at least one choice\r",
+					"        errorMessage: (value) => `should be a non-empty array of choices (got ${JSON.stringify(value)})`\r",
+					"    }\r",
+					"};\r",
+					"\r",
+					"const expectedChoiceSchemaDef = {\r",
+					"    id: {\r",
+					"        type: 'number',\r",
+					"        required: true,\r",
+					"        validation: (value) => Number.isInteger(value) && value > 0,\r",
+					"        errorMessage: (value) => `should be a positive integer (got ${value})`\r",
+					"    },\r",
+					"    choice_text: {\r",
+					"        type: 'string',\r",
+					"        required: true,\r",
+					"        validation: (value) => value.trim().length > 0,\r",
+					"        errorMessage: (value) => `should be a non-empty string (got \"${value}\")`\r",
+					"    },\r",
+					"    votes: {\r",
+					"        type: 'number',\r",
+					"        required: true,\r",
+					"        validation: (value) => Number.isInteger(value) && value >= 0,\r",
+					"        errorMessage: (value) => `should be a non-negative integer (got ${value})`\r",
+					"    }\r",
+					"};\r",
+					"\r",
+					"// Define the validation function as a string, wrapped in parentheses\r",
+					"// to force it to be interpreted as an expression by eval().\r",
+					"const validateObjectAgainstSchemaFuncString = `\r",
+					"    (function(obj, schema, objName, parentIndex = null) { // Added parentheses here\r",
+					"        const prefix = parentIndex !== null ? \\`\\${objName} \\${parentIndex}: \\` : \\`\\${objName}: \\`;\r",
+					"\r",
+					"        pm.expect(obj, \\`\\${prefix}should be an object\\`).to.be.an('object');\r",
+					"\r",
+					"        for (const propName in schema) {\r",
+					"            const propSchema = schema[propName];\r",
+					"            const propValue = obj[propName];\r",
+					"            const fullPropName = \\`\\${prefix}Property '\\${propName}'\\`;\r",
+					"\r",
+					"            // Dynamically create a pm.test for each property validation\r",
+					"            pm.test(\\`\\${fullPropName} is valid\\`, function() {\r",
+					"                // 1. Check if required property exists\r",
+					"                if (propSchema.required) {\r",
+					"                    pm.expect(propValue, \\`\\${fullPropName} is required\\`).to.exist;\r",
+					"                }\r",
+					"\r",
+					"                // If the property exists (or is not required and doesn't exist, we skip type/value checks)\r",
+					"                if (propValue !== undefined && propValue !== null) {\r",
+					"                    // 2. Check property type\r",
+					"                    if (propSchema.type === 'array') {\r",
+					"                        pm.expect(propValue, \\`\\${fullPropName} should be an array\\`).to.be.an('array');\r",
+					"                    } else {\r",
+					"                        pm.expect(propValue, \\`\\${fullPropName} should be of type '\\${propSchema.type}'\\`).to.be.a(propSchema.type);\r",
+					"                    }\r",
+					"\r",
+					"                    // 3. Apply custom validation function if provided\r",
+					"                    if (propSchema.validation) {\r",
+					"                        const isValid = propSchema.validation(propValue);\r",
+					"                        const validationMessage = typeof propSchema.errorMessage === 'function' ?\r",
+					"                                                  propSchema.errorMessage(propValue) :\r",
+					"                                                  \\`Validation failed for \\${propName} (no specific error message available)\\`;\r",
+					"                        pm.expect(isValid, \\`\\${fullPropName} failed custom validation: \\${validationMessage}\\`).to.be.true;\r",
+					"                    }\r",
+					"                } else if (propSchema.required) {\r",
+					"                    pm.expect.fail(\\`\\${fullPropName} is missing.\\`);\r",
+					"                }\r",
+					"            });\r",
+					"        }\r",
+					"\r",
+					"        // Optional: Check for unexpected properties (if your schema is strict)\r",
+					"        pm.test(\\`\\${prefix}No unexpected properties found\\`, function() {\r",
+					"            for (const propName in obj) {\r",
+					"                pm.expect(schema[propName], \\`\\${prefix}Unexpected property '\\${propName}' found\\`).to.exist;\r",
+					"            }\r",
+					"        });\r",
+					"    }) // Added parentheses here\r",
+					"`;\r",
+					"\r",
+					"// Store the stringified schemas and function in collection variables\r",
+					"pm.collectionVariables.set(\"expectedQuestionSchemaString\", JSON.stringify(expectedQuestionSchemaDef));\r",
+					"pm.collectionVariables.set(\"expectedChoiceSchemaString\", JSON.stringify(expectedChoiceSchemaDef));\r",
+					"pm.collectionVariables.set(\"validateObjectAgainstSchemaFunc\", validateObjectAgainstSchemaFuncString);\r",
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseURL",
+			"value": "http://127.0.0.1:8000",
+			"type": "default"
+		},
+		{
+			"key": "expectedQuestionSchemaString",
+			"value": ""
+		},
+		{
+			"key": "expectedChoiceSchemaString",
+			"value": ""
+		},
+		{
+			"key": "validateObjectAgainstSchemaFunc",
+			"value": ""
+		}
+	]
+}

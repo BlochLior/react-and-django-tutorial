@@ -1,13 +1,12 @@
 from django.core.management.base import BaseCommand
 from polls.models import Question, Choice
 from django.utils import timezone
+from datetime import timedelta
 
 class Command(BaseCommand):
     """
     This command is used to populate the database with questions and choices.
     It is run once, after the database is created.
-    Questions 1 and 2 are already in the database, and were entered manually, 
-    through the python interactive shell.
     As such, this command is just as a learning exercise.
     """
     help = 'Populate the database with questions and choices'
@@ -24,6 +23,12 @@ class Command(BaseCommand):
         q4.save()
         q5 = Question(question_text="What's your favorite movie?", pub_date=timezone.now())
         q5.save()
+        q6 = Question(question_text="Test future question", pub_date=timezone.now() + timedelta(days=365 * 100))
+        q6.save()
+        q7 = Question(question_text="Test choiceless question", pub_date=timezone.now())
+        q7.save()
+        q8 = Question(question_text="Test future choiceless question", pub_date=timezone.now() + timedelta(days=365 * 100))
+        q8.save()
 
         # Create new choices
         c1 = Choice(choice_text="Red", votes=0, question=q2)
@@ -64,4 +69,6 @@ class Command(BaseCommand):
         c18.save()
         c19 = Choice(choice_text="Just hacking around", votes=0, question=q1)
         c19.save()
+        c20 = Choice(choice_text="Test choice", votes=0, question=q6)
+        c20.save()
                 
