@@ -1,3 +1,4 @@
+# .github/workflows/postman_tests.yml
 name: API E2E Tests (Postman)
 
 on:
@@ -6,16 +7,14 @@ on:
       - main
       - develop
     paths:
-      - 'backend-django/**' # Make sure this matches your Django project root
-      - 'backend-django/postman_tests/**'
-      - '.github/workflows/postman_tests.yml'
+      - 'backend-django/**'
+      - '.github/workflows/postman_tests.yml' # Keep this for changes to the workflow itself
   pull_request:
     branches:
       - main
       - develop
     paths:
       - 'backend-django/**'
-      - 'backend-django/postman_tests/**'
       - '.github/workflows/postman_tests.yml'
   workflow_dispatch:
 
@@ -34,7 +33,7 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -u ${{ secrets.MYSQL_USER }} -p${{ secrets.MYSQL_PASSWORD }}"
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -48,37 +47,56 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12' # Use '3.12' as per your uv output (CPython 3.12.11)
+          python-version: '3.12'
 
       - name: Install Python Dependencies (uv and project requirements)
-        # We need to change the working directory to the backend-django folder
-        # for uv commands to find pyproject.toml or for uv pip install -r to work correctly
-        #
-        # If your pyproject.toml is at backend-django/pyproject.toml:
-        # working-directory: backend-django
         run: |
           pip install uv
           uv venv
-          uv sync
-        working-directory: ./backend-django # <--- CRITICAL CHANGE HERE
-
-      - name: Run Django Migrations (if needed for tests)
-        # This will also run from the backend-django working directory
+          # For uv, `uv sync` is the equivalent of `uv pip install -r requirements.txt` if pyproject.toml is configured
+          # If no pyproject.toml, you might need uv pip install -r requirements.txt
+          uv pip install -r requirements.txt # Explicitly install from requirements.txt
+        working-directory: ./backend-django
+      - name: Wait for MySQL to be Ready (using custom script)
+        run: |
+          uv run scripts/wait_for_mysql.py
+        working-directory: ./backend-django # Run from the backend-django directory
+        env: # Pass necessary database credentials to your script
+          DATABASE_NAME: ${{ secrets.MYSQL_DATABASE }}
+          DATABASE_USER: ${{ secrets.MYSQL_USER }}
+          DATABASE_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          DATABASE_HOST: mysql # Use the service name as hostname
+          DATABASE_PORT: 3306
+          # If your wait_for_mysql.py imports Django settings,
+          # you might also need DJANGO_SETTINGS_MODULE and SECRET_KEY here
+          DJANGO_SETTINGS_MODULE: mysite.settings
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      - name: Run Django Migrations
         run: |
           uv run manage.py migrate
-        working-directory: ./backend-django # <--- CRITICAL CHANGE HERE
+        working-directory: ./backend-django
         env:
-          DJANGO_SETTINGS_MODULE: mysite.settings # e.g., myproject.settings
+          DJANGO_SETTINGS_MODULE: mysite.settings
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DATABASE_NAME: ${{ secrets.MYSQL_DATABASE }}
+          DATABASE_USER: ${{ secrets.MYSQL_USER }}
+          DATABASE_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          DATABASE_HOST: mysql
+          DATABASE_PORT: 3306
 
       - name: Start Django Backend Server in Background
-        # This will also run from the backend-django working directory
         run: |
           uv run manage.py runserver 0.0.0.0:8000 &
-        working-directory: ./backend-django # <--- CRITICAL CHANGE HERE
+        working-directory: ./backend-django
         env:
-          DJANGO_SETTINGS_MODULE: mysite.settings # e.g., myproject.settings
+          DJANGO_SETTINGS_MODULE: mysite.settings
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DEBUG: "False" # It's good practice to set DEBUG to False in CI
+          DATABASE_NAME: ${{ secrets.MYSQL_DATABASE }}
+          DATABASE_USER: ${{ secrets.MYSQL_USER }}
+          DATABASE_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          DATABASE_HOST: mysql
+          DATABASE_PORT: 3306
 
       # --- Newman (Node.js) Setup and Run ---
 
@@ -93,8 +111,6 @@ jobs:
           npm install -g newman-reporter-htmlextra
 
       - name: Run Postman API Tests
-        # The newman run command itself will be executed from the root of the repository
-        # so the path to the collection JSON must be relative to the repository root.
         run: |
           newman run backend-django/postman_tests/Django_Polls_API.postman_collection.json \
             --reporters cli,htmlextra \
@@ -110,4 +126,5 @@ jobs:
       - name: Stop Django Backend Server
         if: always()
         run: |
-          pkill -f "python backend-django/manage.py runserver 0.0.0.0:8000" || true
+          pkill -f "python manage.py runserver 0.0.0.0:8000" || true
+        working-directory: ./backend-django
