@@ -76,6 +76,14 @@ jobs:
             # Pass the full DATABASE_URL_SECRET, as settings.py parses it
             DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }} # <-- CHANGE THIS LINE
 
+      - name: Populate Database with Test Data
+        run: |
+          uv run manage.py populate_questions
+        working-directory: ./backend-django
+        env:
+          DJANGO_SETTINGS_MODULE: mysite.settings
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DATABASE_URL: mysql://${{ secrets.MYSQL_USER }}:${{ secrets.MYSQL_PASSWORD }}@127.0.0.1:3306/${{ secrets.MYSQL_DATABASE }} # <-- CHANGE THIS LINE
       - name: Start Django Backend Server in Background
         run: |
           nohup uv run manage.py runserver 0.0.0.0:8000 &
