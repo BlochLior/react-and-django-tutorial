@@ -53,9 +53,7 @@ jobs:
         run: |
           pip install uv
           uv venv
-          # For uv, `uv sync` is the equivalent of `uv pip install -r requirements.txt` if pyproject.toml is configured
-          # If no pyproject.toml, you might need uv pip install -r requirements.txt
-          uv pip install -r requirements.txt # Explicitly install from requirements.txt
+          uv sync
         working-directory: ./backend-django
       - name: Wait for MySQL to be Ready (using custom script)
         run: |
