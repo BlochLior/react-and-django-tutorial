@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from .models import Question, Choice
 from .schemas import QuestionSchema, ChoiceSchema, VoteSchema
 
-def create_question(question_text, days):
+def create_question(question_text: str, days: int) -> Question:
     """
     Create a question with the given 'question_text' and published the given number of 'days' offset to now (negative for questions published in the past, positive for questions that have yet to be published).
     This is for tests in the future that i'll create, to assist with creating tests.
@@ -18,78 +18,22 @@ def create_question(question_text, days):
     time = timezone.now() + datetime.timedelta(days=days)
     return Question.objects.create(question_text=question_text, pub_date=time)
 
-def create_question_with_choices(question_text, days, choice_texts):
+def create_question_with_choices(question_text: str, days: int, choice_texts: list[str] | None = None) -> Question:
     """
     Creates a Question with a given question_text and pub_date,
     and also creates a list of Choices for that question.
+    If choice_texts is not provided, no choices are created.
+    This uses the create_question function to create the question,
+    and then creates the choices.
     """
     question = create_question(question_text=question_text, days=days)
-    for choice_text in choice_texts:
-        Choice.objects.create(question=question, choice_text=choice_text, votes=0)
+    if choice_texts:
+        for choice_text in choice_texts:
+            Choice.objects.create(question=question, choice_text=choice_text, votes=0)
     return question
-
-class ModelTests(TestCase):
-    # Model-level tests
-    def test_question_creation(self):
-        # Create a Question using Question.objects.create(), and assert that its' fields
-        # match what we pass to them.
-        now = timezone.now()
-        question = Question.objects.create(question_text="Test question 1", pub_date=now)
-        time_difference = timezone.now() - question.pub_date
-        self.assertTrue(abs(time_difference) < datetime.timedelta(seconds=1))
-        self.assertEqual(question.question_text, "Test question 1")
-
-    def test_votes_default_to_zero(self):
-        # Create a Choice and assert that its votes are 0.
-        question = create_question_with_choices(
-            question_text="Test question 1",
-            days=0,
-            choice_texts=["Choice"]
-        )
-        self.assertEqual(question.choice_set.first().votes, 0)
 
 class SchemaTests(TestCase):
     # Schema-level tests
-    def test_question_schema_validation(self):
-        """
-        Create a dictionary with valid data (including a list of choices)
-        and assert that QuestionSchema.model_validate(data) doesn't raise a ValidationError.
-        """
-        data = {
-            "id": 1,
-            "question_text": "Is this schema valid?",
-            "pub_date": timezone.now().isoformat(),
-            "choices": [
-                {"id": 101, "choice_text": "Choice 1a", "votes": 0}, 
-                {"id": 102, "choice_text": "Choice 2b", "votes": 0}
-                ]
-        }
-        QuestionSchema.model_validate(data)
-
-    def test_choice_schema_validation(self):
-        # Tests that a valid Choice dictionary can be validated by ChoiceSchema.
-        valid_choice_data = {
-            "id": 1,
-            "choice_text": "A valid choice",
-            "votes": 10
-        }
-        try:
-            ChoiceSchema.model_validate(valid_choice_data)
-        except ValidationError as e:
-            self.fail(f"ChoiceSchema validation failed: {e}")
-
-    def test_vote_schema_validation(self):
-        """
-        Tests that a valid Vote dictionary can be validated by VoteSchema.
-        """
-        valid_vote_data = {
-            "choice_id": 1
-        }
-        try:
-            VoteSchema.model_validate(valid_vote_data)
-        except ValidationError as e:
-            self.fail(f"VoteSchema validation failed: {e}")
-
     def test_question_schema_fails_on_missing_question_text(self):
         # Tests that a QuestionSchema fails validation when question_text is missing.
         invalid_question_data = {
@@ -163,9 +107,12 @@ class QuestionAPITests(APITestCase):
         self.assertEqual(response.data[0]['question_text'], self.live_question.question_text)
         self.assertEqual(response.data[1]['question_text'], self.old_question.question_text)
 
-    def test_list_questions_api_show_all(self):
+    def test_list_questions_api_include_future_and_choiceless_questions(self):
+        # TDD - this is a good example for a practical test, whereas other tests are more trying to test ORMs.
         """
         Ensure the API returns all questions when queried with the correct flags.
+        Currently, the only query_params supported are show_future and show_choiceless;
+        both of them are marked true here.
         """
         url = reverse('polls:question_list_api')
         response = self.client.get(url, format='json', data={'show_future': 'true', 'show_choiceless': 'true'})
@@ -227,4 +174,29 @@ class VoteAPITests(APITestCase):
         url = reverse('polls:vote_api', args=[non_existent_question_id])
         response = self.client.post(url, format='json', data={'choice_id': self.question.choice_set.first().id})
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_vote_api_validation_error_invalid_choice_id_type(self):
+        """
+        Ensure the vote API returns 400 when vote_data has an invalid choice_id type,
+        hitting the VoteSchema ValidationError block.
+        """
+        
+        url = reverse('polls:vote_api', args=[self.question.id])
+        # Provide data that VoteSchema will fail to validate
+        invalid_data = {'choice_id': 'not an integer'}
+        response = self.client.post(url, format='json', data=invalid_data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['error'], 'Invalid request body')
+
+    def test_vote_api_validation_error_missing_choice_id(self):
+        """
+        Ensure the vote API returns 400 when vote_data is missing the choice_id field,
+        hitting the VoteSchema ValidationError block.
+        """
+        url = reverse('polls:vote_api', args=[self.question.id])
+        response = self.client.post(url, format='json', data={})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['error'], 'Invalid request body')
         

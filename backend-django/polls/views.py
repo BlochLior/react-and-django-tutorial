@@ -4,7 +4,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.db.models import Count
 
-
 from pydantic import ValidationError
 
 from rest_framework.response import Response
@@ -14,6 +13,7 @@ from rest_framework.decorators import api_view
 from .models import Question, Choice
 from .schemas import QuestionSchema, ChoiceSchema, VoteSchema
 
+# TODO: the validation here isn't really good/relevant, but it will be addressed later on.
 
 @api_view(['GET'])
 def question_list_api(request):
@@ -35,10 +35,12 @@ def question_list_api(request):
     for q in questions:
         # Get choices for each question
         choices_data = [
-            ChoiceSchema.model_validate(c).model_dump()
+            ChoiceSchema.model_validate(c).model_dump() # TODO: validate here less relevant if at all - i control this data
             for c in q.choice_set.all()
         ]
         # Build a dictionary to pass to the QuestionSchema
+        # TODO: this should be done with the pydantic schema simply.
+        # TODO: client needn't know about the things, pydantic can handle that.
         question_dict = {
             "id": q.id,
             "question_text": q.question_text,
@@ -112,5 +114,3 @@ def vote_api(request, pk):
         return Response(updated_question_data, status=status.HTTP_200_OK)
     except Choice.DoesNotExist:
         return Response({'error': 'Choice not found for this question'}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
