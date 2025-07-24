@@ -1,42 +1,24 @@
-# React Frontend Specific Ignores
-
-# Node modules
-node_modules/
-
-# Production build output
-build/
-dist/
-out/
-
-# Dependency lock files (choose one based on your package manager)
-# package-lock.json # Uncomment if you use npm
-# yarn.lock         # Uncomment if you use yarn
-# pnpm-lock.yaml    # Uncomment if you use pnpm
-
-# Environment variables (React apps typically use .env files)
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Log files
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Next.js specific (if you were using it)
-.next/
-out/
+node_modules
+dist
+dist-ssr
+*.local
 
-# Create React App specific
-# yarn-error.log
-# .pnp
-# .pnp.js
-
-# Testing
-coverage/
-
-# Misc
-.cache/
-.eslintcache
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
