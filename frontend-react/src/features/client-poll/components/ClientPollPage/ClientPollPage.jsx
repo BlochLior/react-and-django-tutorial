@@ -11,6 +11,9 @@ function ClientPollPage({ pollId }) {
     // State to hold any error that might occur
     const [error, setError] = useState(null);
     
+    // State to hold the selected choice ID
+    const [selectedChoiceId, setSelectedChoiceId] = useState(null);
+    
     // useEffect hook to fetch data when the component mounts for pollId changes
     useEffect(() => {
         // if no pollId is provided, immediately show an error
@@ -32,6 +35,7 @@ function ClientPollPage({ pollId }) {
                 }
                 const data = await response.json(); // Parse the JSON response
                 setQuestion(data); // Set the fetched question data
+                setSelectedChoiceId(null); // Reset selected choice
             } catch (err) {
                 // Catch any network errors or errors thrown above
                 console.error("Failed to fetch poll:", err);
@@ -42,6 +46,11 @@ function ClientPollPage({ pollId }) {
         };
         fetchPollData(); // Call the function to fetch data when the effect runs
     }, [pollId]); // Dependency array: re-run this effect only if pollId changes
+
+    // Handler function to update the selectedChoiceId state
+    const handleSelectChoice = (choiceId) => {
+        setSelectedChoiceId(choiceId);
+    };
     
     // Conditional rendering based on state
     if (loading) {
@@ -62,8 +71,8 @@ function ClientPollPage({ pollId }) {
         <div>
             <QuestionDisplay
                 question={question}
-                selectedChoiceId={null} // ClientPollPage will manage this state later
-                onSelectChoice={() => {}} // ClientPollPage will manage this handler later
+                selectedChoiceId={selectedChoiceId}
+                onSelectChoice={handleSelectChoice}
             />
         </div>
     )

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import ClientPollPage from './ClientPollPage';
@@ -66,5 +66,44 @@ describe('ClientPollPage', () => {
 
         // Assert that the question text isn't rendered
         expect(screen.queryByText(mockPollData.question_text)).not.toBeInTheDocument();
+    });
+    it('should update selectedChoiceId state and pass it to QuestionDisplay when a choice is made', async () => {
+        // This test checks the `checked` state of the radio buttons
+        
+        // Mock fetch to ensure data loads successfully
+        global.fetch = vi.fn(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(mockPollData),
+            })
+        );
+        const pollId = 1;
+        const user = userEvent.setup(); // Setup user-event
+        render(<ClientPollPage pollId={pollId}/>);
+
+        // Wait for the poll data to load components to render
+        await screen.findByText(mockPollData.question_text);
+
+        // Find g.w. and donald trump radio buttons
+        const gWRadioButton = screen.getByRole('radio', { name: mockPollData.choices[0].choice_text });
+        const dTRadioButton = screen.getByRole('radio', { name: mockPollData.choices[3].choice_text });
+
+        // Initially, radios should not be checked
+        expect(gWRadioButton).not.toBeChecked();
+        expect(dTRadioButton).not.toBeChecked();
+
+        // Simulate a click on g.w. radio button
+        await user.click(gWRadioButton);
+
+        // Assert g.w. radio button is checked
+        expect(gWRadioButton).toBeChecked();
+        expect(dTRadioButton).not.toBeChecked();
+
+        // Now simulate a click on d.t. radio button
+        await user.click(dTRadioButton);
+
+        // Assert d.t. radio button is checked
+        expect(gWRadioButton).not.toBeChecked();
+        expect(dTRadioButton).toBeChecked();
     });
 })
