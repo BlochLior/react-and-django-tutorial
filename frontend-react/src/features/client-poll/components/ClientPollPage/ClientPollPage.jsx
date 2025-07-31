@@ -3,14 +3,17 @@ import React, { useState, useEffect } from 'react';
 import QuestionDisplay from '../QuestionDisplay/QuestionDisplay';
 
 function ClientPollPage({ pollId }) {
-    // State to hold the question data
-    const [question, setQuestion] = useState(null);
+    // State to hold the entire poll data
+    const [poll, setPoll] = useState(null);
     // State for loading status
     const [loading, setLoading] = useState(true);
     // State to hold any error that might occur
     const [error, setError] = useState(null);
-    // State to hold the selected choice ID
-    const [selectedChoiceId, setSelectedChoiceId] = useState(null);
+    // State to hold selected choice IDs for multiple questions
+    // this state will be an object wherein question IDs are keys,
+    // and selected choice IDs are values
+    const [answers, setAnswers] = useState({});
+    
     // State for submission status and messages
     const [submitting, setSubmitting] = useState(false);
     const [submissionMessage, setSubmissionMessage] = useState(null);
@@ -38,8 +41,7 @@ function ClientPollPage({ pollId }) {
                     throw new Error(`Error loading poll: ${errorData.detail || response.statusText || response.status}`);
                 }
                 const data = await response.json(); // Parse the JSON response
-                setQuestion(data); // Set the fetched question data
-                setSelectedChoiceId(null); // Reset selected choice
+                setPoll(data); // Set the fetched poll data
             } catch (err) {
                 // Catch any network errors or errors thrown above
                 console.error("Failed to fetch poll:", err);
@@ -51,16 +53,20 @@ function ClientPollPage({ pollId }) {
         fetchPollData(); // Call the function to fetch data when the effect runs
     }, [pollId]); // Dependency array: re-run this effect only if pollId changes
 
-    // Handler function to update the selectedChoiceId state
-    const handleSelectChoice = (choiceId) => {
-        setSelectedChoiceId(choiceId);
+    // Handler function to update the answers state
+    const handleSelectChoice = (questionId, choiceId) => {
+        setAnswers((prevAnswers) => ({
+            ...prevAnswers,
+            [questionId]: choiceId,
+        }));
         setSubmissionError(null); // Reset submission error on choice selection
         setSubmissionMessage(null); // Reset submission message on choice selection
     };
 
     // Function to handle the vote submission
     const handleSubmitVote = async () => {
-        if (selectedChoiceId === null) {
+        // Submit button disabled if no questions have been answered
+        if (Object.keys(answers).length === 0) {
             setSubmissionError("Please select a choice before submitting");
             return;
         }
@@ -79,7 +85,7 @@ function ClientPollPage({ pollId }) {
                 // it will be needed to be fetched here, using a creation of a helper function
                 // like getCookie:
                 // 'X-CSRFToken': getCookie('csrftoken'),
-                body: JSON.stringify({ choice_id: selectedChoiceId }),
+                body: JSON.stringify({ answers: answers }),
             });
             if (!response.ok) {
                 // Handling of non-2xx responses
@@ -90,7 +96,7 @@ function ClientPollPage({ pollId }) {
             // Assuming a successful response, that might contain a message or updated data
             const data = await response.json();
             setSubmissionMessage(data.message || "Vote submitted successfully");
-            setSelectedChoiceId(null); // Reset selected choice
+            setAnswers({}); // Reset answers after successful submission
         } catch (err) {
             console.error("Failed to submit vote:", err);
             setSubmissionError(err.message || "Failed to submit vote"); // Set the error state
@@ -108,25 +114,29 @@ function ClientPollPage({ pollId }) {
         return <div style={{ color: 'red', padding: '10px', border: '1px solid red' }}>Error loading poll: {error}</div>;
     }
 
-    // If not loading, no error but still no question (e.g. API returned empty data)
-    if (!question) {
+    // If not loading, no error but still no poll data
+    if (!poll || !poll.questions || poll.questions.length === 0) {
         return <div>No poll data available</div>;
     }
 
     // If data is successfully loaded and there's no error
     return (
         <div>
-            <QuestionDisplay
-                question={question}
-                selectedChoiceId={selectedChoiceId}
-                onSelectChoice={handleSelectChoice}
-            />
+            <h1>{poll.title}</h1>
+            {poll.questions.map((question) => (
+                <QuestionDisplay
+                    key={question.id}
+                    question={question}
+                    selectedChoiceId={answers[question.id]}
+                    onSelectChoice={(choiceId) => handleSelectChoice(question.id, choiceId)}
+                />
+            ))}
             <button
                 onClick={handleSubmitVote}
                 // Button is diabled if: 
                 // 1. No choice is selected (selectedChoiceId is null)
                 // 2. The button is currently submitting (submitting is true)
-                disabled={selectedChoiceId === null || submitting}
+                disabled={Object.keys(answers).length === 0 || submitting}
             >
                 {submitting ? 'Submitting...' : 'Submit Vote'}
             </button>

@@ -95,6 +95,11 @@ describe('ClientPollPage', () => {
     });
 
     it('should display an error message if poll data fetching fails', async () => {
+        // save original console.error function
+        const originalConsoleError = console.error;
+        // replace console.error with a mock function that doesn't throw an error
+        console.error = vi.fn();
+        
         // Mock fetch to simulate a network error or bad response
         global.fetch = vi.fn(() =>
             Promise.resolve({
@@ -118,6 +123,9 @@ describe('ClientPollPage', () => {
 
         // Assert that the question text isn't rendered
         expect(screen.queryByText(mockMultiQuestionPollData.questions[0].question_text)).not.toBeInTheDocument();
+
+        // Restore original console.error function
+        console.error = originalConsoleError;
     });
     it('should update selectedChoiceId state and pass it to QuestionDisplay when a choice is made', async () => {
         // This test checks the `checked` state of the radio buttons
@@ -225,7 +233,9 @@ describe('ClientPollPage', () => {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ choice_id: selectedChoice.id }),
+            body: JSON.stringify({ answers: {
+                [mockMultiQuestionPollData.questions[0].id]: selectedChoice.id
+            }}),
         });
 
         // 8. Assert a success message is displayed
