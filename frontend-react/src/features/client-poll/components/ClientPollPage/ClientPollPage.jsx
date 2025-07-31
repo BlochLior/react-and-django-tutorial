@@ -55,6 +55,7 @@ function ClientPollPage({ pollId }) {
 
     // Handler function to update the answers state
     const handleSelectChoice = (questionId, choiceId) => {
+        console.log('handleSelectChoice called. questionId:', questionId, 'choiceId:', choiceId); // Helpful for debugging
         setAnswers((prevAnswers) => ({
             ...prevAnswers,
             [questionId]: choiceId,
@@ -75,6 +76,7 @@ function ClientPollPage({ pollId }) {
         setSubmissionError(null); // Reset submission error
         setSubmissionMessage(null); // Reset submission message
 
+        console.log('handleSubmitVote called. answers:', answers); // Helpful for debugging
         try {
             const response = await fetch(`/api/polls/${pollId}/vote/`, {
                 method: 'POST',
@@ -119,10 +121,22 @@ function ClientPollPage({ pollId }) {
         return <div>No poll data available</div>;
     }
 
+    // Progress display code
+    const totalQuestions = poll.questions.length;
+    // The `answers` object keys represent the question IDs that have been answered
+    const answeredQuestionsCount = Object.keys(answers).length;
+    const completionPercentage = totalQuestions > 0 
+        ? Math.round((answeredQuestionsCount / totalQuestions) * 100) 
+        : 0; // Handle division by zero if there are no questions
+
     // If data is successfully loaded and there's no error
     return (
         <div>
             <h1>{poll.title}</h1>
+            <div style={{ marginBottom: '20px', padding: '10px', border: '1px solid #ccc', borderRadius: '5px' }}>
+                <p>Answered {answeredQuestionsCount} of {totalQuestions} questions</p>
+                <p>{completionPercentage}% Complete</p>
+            </div>
             {poll.questions.map((question) => (
                 <QuestionDisplay
                     key={question.id}

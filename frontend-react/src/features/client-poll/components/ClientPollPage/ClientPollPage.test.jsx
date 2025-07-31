@@ -259,4 +259,42 @@ describe('ClientPollPage', () => {
             expect(screen.getByText(question.question_text)).toBeInTheDocument();
         }
     });
+    it('should display poll progress (answered X of Y questions and % complete)', async () => {
+        global.fetch = vi.fn(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(mockMultiQuestionPollData),
+            })
+        );
+        const pollId = 1;
+        const user = userEvent.setup();
+        render(<ClientPollPage pollId={pollId}/>);
+
+        // Wait for the poll data to load
+        await screen.findByText(mockMultiQuestionPollData.questions[0].question_text);
+
+        const totalQuestions = mockMultiQuestionPollData.questions.length; // Should be 5, as this mock has 5 questions
+
+        // 1. Initially, no questions are answered
+        expect(screen.getByText(`Answered 0 of ${totalQuestions} questions`)).toBeInTheDocument();
+        expect(screen.getByText(`0% Complete`)).toBeInTheDocument();
+
+        // 2. Select an answer for the first question
+        const firstQuestionChoices = mockMultiQuestionPollData.questions[0].choices;
+        await user.click(screen.getByRole('radio', { name: firstQuestionChoices[0].choice_text }));
+
+        // 3. Assert progress is updated
+        expect(screen.getByText(`Answered 1 of ${totalQuestions} questions`)).toBeInTheDocument();
+        expect(screen.getByText(`20% Complete`)).toBeInTheDocument();
+
+        // 4. Select answers for all remaining questions
+        for (let i = 1; i < totalQuestions; i++) {
+            const questionChoices = mockMultiQuestionPollData.questions[i].choices;
+            await user.click(screen.getByRole('radio', { name: questionChoices[0].choice_text }));
+        }
+
+        // 5. Assert progress is updated
+        expect(screen.getByText(`Answered ${totalQuestions} of ${totalQuestions} questions`)).toBeInTheDocument();
+        expect(screen.getByText(`100% Complete`)).toBeInTheDocument();
+    })
 })
