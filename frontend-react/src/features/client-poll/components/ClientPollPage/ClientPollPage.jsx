@@ -13,11 +13,12 @@ function ClientPollPage({ pollId }) {
     // this state will be an object wherein question IDs are keys,
     // and selected choice IDs are values
     const [answers, setAnswers] = useState({});
-    
     // State for submission status and messages
     const [submitting, setSubmitting] = useState(false);
     const [submissionMessage, setSubmissionMessage] = useState(null);
     const [submissionError, setSubmissionError] = useState(null);
+    // State to manage the current phase of the poll - can be 'answering', 'reviewing', or 'submitted'
+    const [pollPhase, setPollPhase] = useState('answering');
     
     // useEffect hook to fetch data when the component mounts for pollId changes
     useEffect(() => {
@@ -99,12 +100,19 @@ function ClientPollPage({ pollId }) {
             const data = await response.json();
             setSubmissionMessage(data.message || "Vote submitted successfully");
             setAnswers({}); // Reset answers after successful submission
+            setPollPhase('submitted'); // Move to 'submitted' phase
+
         } catch (err) {
             console.error("Failed to submit vote:", err);
             setSubmissionError(err.message || "Failed to submit vote"); // Set the error state
         } finally {
             setSubmitting(false); // Stop submitting
         }
+    };
+    
+    // Handler for review button
+    const handleReviewAnswers = () => {
+        setPollPhase('reviewing'); // Move to 'reviewing' phase
     };
     
     // Conditional rendering based on state
@@ -137,25 +145,63 @@ function ClientPollPage({ pollId }) {
                 <p>Answered {answeredQuestionsCount} of {totalQuestions} questions</p>
                 <p>{completionPercentage}% Complete</p>
             </div>
-            {poll.questions.map((question) => (
-                <QuestionDisplay
-                    key={question.id}
-                    question={question}
-                    selectedChoiceId={answers[question.id]}
-                    onSelectChoice={(choiceId) => handleSelectChoice(question.id, choiceId)}
-                />
-            ))}
-            <button
-                onClick={handleSubmitVote}
-                // Button is diabled if: 
-                // 1. No choice is selected (selectedChoiceId is null)
-                // 2. The button is currently submitting (submitting is true)
-                disabled={Object.keys(answers).length === 0 || submitting}
-            >
-                {submitting ? 'Submitting...' : 'Submit Vote'}
-            </button>
-            {/* Display submission feedback messages */}
-            {submissionMessage && <div style={{ color: 'green', marginTop: '10px'}}>{submissionMessage}</div>}
+            {pollPhase === 'answering' && (
+                <>
+                {poll.questions.map((question) => (
+                    <QuestionDisplay
+                        key={question.id}
+                        question={question}
+                        selectedChoiceId={answers[question.id] || null}
+                        onSelectChoice={(choiceId) => handleSelectChoice(question.id, choiceId)}
+                    />
+                ))}
+                    <button
+                        onClick={handleSubmitVote}
+                        // Button is disabled if: 
+                        // 1. No choice is selected (selectedChoiceId is null)
+                        // 2. The button is currently submitting (submitting is true)
+                        disabled={Object.keys(answers).length === 0 || submitting}
+                    >
+                        {submitting ? 'Submitting...' : 'Submit Vote'}
+                    </button>
+
+                    <button
+                        onClick={handleReviewAnswers}
+                        disabled={Object.keys(answers).length === 0}
+                        style={{ marginLeft: '10px' }}
+                    >
+                        Review Answers
+                    </button>
+                </>
+            )}
+            {pollPhase === 'reviewing' && (
+                <div>
+                    <h2>Review Answers</h2>
+                    {/* TODO: review content here will be added */}
+                    <p>Your selected answers will be displayed here for review.</p>
+
+                    {/* Button to go back to change answers */}
+                    <button onClick={() => setPollPhase('answering')}>Back to Answers</button>
+
+                    {/* Button to submit answers on the review page */}
+                    <button
+                        onClick={handleSubmitVote}
+                        disabled={submitting}
+                        style={{ marginLeft: '10px' }}
+                    >
+                        {submitting ? 'Submitting...' : 'Submit Vote'}
+                    </button>
+                </div>
+            )}
+
+            {/* Handler for the 'submitted' phase to the thank you message */}
+            {pollPhase === 'submitted' && submissionMessage && (
+                <div style={{ color: 'green', marginTop: '10px'}}>
+                    <h3>Thank you for voting!</h3>
+                    <p>{submissionMessage}</p>
+                </div>
+            )}
+            
             {submissionError && <div style={{ color: 'red', marginTop: '10px' }}>{submissionError}</div>}
         </div>
     )

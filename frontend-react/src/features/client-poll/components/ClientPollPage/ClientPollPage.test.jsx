@@ -2,7 +2,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import ClientPollPage from './ClientPollPage';
-import QuestionDisplay from '../QuestionDisplay/QuestionDisplay';
 
 describe('ClientPollPage', () => {
     // A mock that represents the full poll data that ClientPollPage, one with multiple questions
@@ -296,5 +295,72 @@ describe('ClientPollPage', () => {
         // 5. Assert progress is updated
         expect(screen.getByText(`Answered ${totalQuestions} of ${totalQuestions} questions`)).toBeInTheDocument();
         expect(screen.getByText(`100% Complete`)).toBeInTheDocument();
-    })
+    });
+    it('should enable submit button only when at least one choice is selected', async () => {
+        global.fetch = vi.fn(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(mockMultiQuestionPollData),
+            })
+        );
+        const pollId = 1;
+        const user = userEvent.setup();
+        render(<ClientPollPage pollId={pollId}/>);
+
+        // Wait for the poll data to load
+        await screen.findByText(mockMultiQuestionPollData.questions[0].question_text);
+
+        const submitButton = screen.getByRole('button', { name: /Submit Vote/i });
+
+        // Initially, no choices are selected, so the submit button should be disabled
+        expect(submitButton).toBeDisabled();
+
+        // Select a choice for the first question
+        const firstQuestionChoices = mockMultiQuestionPollData.questions[0].choices;
+        await user.click(screen.getByRole('radio', { name: firstQuestionChoices[0].choice_text }));
+
+        // Submit button should now be enabled
+        expect(submitButton).toBeEnabled();
+    });
+    it('should show a "Review Answers" button and transition to review phase when clicked', async () => {
+        global.fetch = vi.fn(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(mockMultiQuestionPollData),
+            })
+        );
+        const pollId = 1;
+        const user = userEvent.setup();
+        render(<ClientPollPage pollId={pollId}/>);
+
+        // Wait for the poll data to load
+        await screen.findByText(mockMultiQuestionPollData.questions[0].question_text);
+
+        let reviewButton = screen.queryByRole('button', { name: /Review Answers/i });
+        expect(reviewButton).toBeInTheDocument();
+        expect(reviewButton).toBeDisabled();
+
+        // Select a choice for the first question to enable/show the review button
+        const firstQuestionChoices = mockMultiQuestionPollData.questions[0].choices;
+        await user.click(screen.getByRole('radio', { name: firstQuestionChoices[0].choice_text }));
+
+        // After selecting one choice, the "Review Answers" button should be in the document
+        // This should be done with findByRole because it might appear slightly after state change
+        reviewButton = await screen.findByRole('button', { name: /Review Answers/i });
+        expect(reviewButton).toBeInTheDocument();
+        expect(reviewButton).toBeEnabled();
+
+        // Click the review button
+        await user.click(reviewButton);
+
+        // After clicking the UI should change to the review phase:
+        // 1. The original question text for answering should be hidden
+        //   (indicating that the user can't change their answers)
+        await waitFor(() => {
+            expect(screen.queryByText(mockMultiQuestionPollData.questions[0].question_text)).not.toBeInTheDocument();
+        });
+
+        // 2. A new heading specifically for the review phase should be displayed
+        expect(screen.getByRole('heading', { name: /review answers/i })).toBeInTheDocument();
+    });
 })

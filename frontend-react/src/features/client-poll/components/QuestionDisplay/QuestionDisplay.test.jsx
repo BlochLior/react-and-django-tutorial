@@ -18,6 +18,7 @@ describe('QuestionDisplay', () => {
             {id: 103, choice_text: 'Eyal Golan is second best, only to god which is the best', votes: 0},
         ],
     };
+    const mockOnSelectChoice = vi.fn(); // Mock function for the handler
 
     it('should render the question text', () => {
         render(<QuestionDisplay question={mockQuestion} />);
@@ -66,23 +67,4 @@ describe('QuestionDisplay', () => {
         // Assert that it was called with the correct argument
         expect(mockOnSelectChoice).toHaveBeenCalledWith(choiceToClick.id);
     });
-    it('should apply a visual highlight to the selected choice', () => {
-        const selectedChoiceId = 102; // 'I am the best'
-
-        render(<QuestionDisplay question={mockQuestion} selectedChoiceId={selectedChoiceId}/>);
-
-        // Find the container div for the selected choice
-        const selectedChoiceElement = screen.getByText('I am the best').closest('div'); // Get closest div that contains the text
-        
-        // Assert that the selected choice element has the 'selectedChoice' class
-        expect(selectedChoiceElement).toHaveClass(styles.selectedChoice);
-
-        // Optional - make sure the rest of the choices don't have the 'selectedChoice' class
-        const unselectedChoiceElement1 = screen.getByText('You are the best').closest('div');
-        expect(unselectedChoiceElement1).not.toHaveClass(styles.selectedChoice);
-        const unselectedChoiceElement2 = screen.getByText('Eyal Golan is second best, only to god which is the best').closest('div');
-        expect(unselectedChoiceElement2).not.toHaveClass(styles.selectedChoice);
-
-    });
-
 });

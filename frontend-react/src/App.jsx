@@ -1,5 +1,5 @@
 import './App.css'
-import PollForm from './components/PollForm';
+import ClientPollPage from './features/client-poll/components/ClientPollPage/ClientPollPage';
 
 function App() {
   return (
@@ -9,7 +9,7 @@ function App() {
       </header>
       <main>
         {/* components go here */}
-        <PollForm />
+        <ClientPollPage />
       </main>
     </div>      
   )   
