@@ -20,5 +20,6 @@
             "username": "django_user",
             "askForPassword": true
         }
-    ]
+    ],
+    "python.languageServer": "Default"
 }
