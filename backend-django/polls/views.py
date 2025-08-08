@@ -11,9 +11,9 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 
 from .models import Question, Choice
-from .schemas import QuestionSchema, ChoiceSchema, VoteSchema
+from .schemas import QuestionSchema, ChoiceSchema # VoteSchema
 
-# TODO: the validation here isn't really good/relevant, but it will be addressed later on.
+
 
 @api_view(['GET'])
 def question_list_api(request):
@@ -91,8 +91,9 @@ def vote_api(request, pk):
         return Response({'error': 'Question not found'}, status=status.HTTP_404_NOT_FOUND)
     
     try:
+        pass
         # DRF automatically parses the req body with requset.data
-        vote_data = VoteSchema(**request.data)
+        # vote_data = VoteSchema(**request.data)
     except ValidationError:
         return Response({'error': "Invalid request body"}, status=status.HTTP_400_BAD_REQUEST)
     
