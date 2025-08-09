@@ -1,8 +1,11 @@
 from datetime import timedelta
 from django.utils import timezone
 from django.db.models import Sum
+from django.test import Client
+from django.http import HttpResponse
 from polls.models import Question, Choice
 from polls.schemas import ResultsSchema
+import json
 
 def create_question(question_text: str, days: int=0) -> Question:
     """
@@ -43,3 +46,9 @@ def prepare_question_results_for_validation(question: Question) -> ResultsSchema
         total_votes=total_votes,
         choices=choices_data
     )
+
+def make_json_post_request(client: Client, url: str, data: dict) -> HttpResponse:
+    """
+    Makes a POST request to the given URL with the given data as JSON.
+    """
+    return client.post(url, json.dumps(data), content_type='application/json')
