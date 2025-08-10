@@ -1,10 +1,8 @@
 from datetime import timedelta
 from django.utils import timezone
-from django.db.models import Sum
 from django.test import Client
 from django.http import HttpResponse
 from polls.models import Question, Choice
-from polls.schemas import ResultsSchema
 import json
 
 def create_question(question_text: str, days: int=0) -> Question:
@@ -29,26 +27,40 @@ def create_question_with_choices(question_text: str, days: int=0, choice_texts: 
             Choice.objects.create(question=question, choice_text=choice_text, votes=0)
     return question
 
-def prepare_question_results_for_validation(question: Question) -> ResultsSchema:
-    total_votes = question.choice_set.aggregate(total=Sum('votes'))['total'] or 0
-    choices_data = []
-    for choice in question.choice_set.all():
-        percentage = (choice.votes / total_votes * 100) if total_votes > 0 else 0
-        choices_data.append(
-            {
-                "choice_text": choice.choice_text,
-                "votes": choice.votes,
-                "percentage": percentage
-            }
-        )
-    return ResultsSchema(
-        question_text=question.question_text,
-        total_votes=total_votes,
-        choices=choices_data
-    )
+def prepare_question_results_for_validation(question):
+    """
+    Prepares a question and its choices for validation by the ResultsSchema.
+    """
+    # This dictionary must contain all the fields required by ResultsSchema
+    # It must also include the related choices, which Pydantic will validate.
+    return {
+        "id": question.id,
+        "question_text": question.question_text,
+        "pub_date": question.pub_date,
+        "choice_set": list(question.choice_set.all())
+    }
 
 def make_json_post_request(client: Client, url: str, data: dict) -> HttpResponse:
     """
     Makes a POST request to the given URL with the given data as JSON.
     """
-    return client.post(url, json.dumps(data), content_type='application/json')
+    response = client.post(url, json.dumps(data), content_type='application/json')
+    try:
+        response.data = json.loads(response.content)
+    except json.JSONDecodeError:
+        response.data = {}
+    
+    return response
+
+def make_json_put_request(client: Client, url: str, data: dict) -> HttpResponse:
+    """
+    Makes a PUT request to the given URL with the given data as JSON.
+    """
+    response = client.put(url, json.dumps(data), content_type='application/json')
+    try:
+        response.data = json.loads(response.content)
+    except json.JSONDecodeError:
+        response.data = {}
+    
+    return response
+    

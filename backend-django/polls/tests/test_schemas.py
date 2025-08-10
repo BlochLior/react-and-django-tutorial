@@ -1,9 +1,18 @@
 from django.test import TestCase
-from polls.schemas import NewChoiceSchema, NewQuestionSchema, PollSubmissionSchema, ResultsSchema, ResultsChoiceSchema
+from polls.schemas import (
+    NewChoiceSchema, 
+    NewQuestionSchema, 
+    PollSubmissionSchema, 
+    ResultsSchema, 
+    ResultsChoiceSchema,
+    QuestionAdminSchema,
+    QuestionUpdateSchema,
+    ChoiceUpdateSchema
+    )
 from polls.models import Question, Choice
 from django.utils import timezone
 from datetime import timedelta
-from polls.tests.utils import prepare_question_results_for_validation, create_question_with_choices
+from polls.tests.utils import create_question_with_choices
 from pydantic import ValidationError
 
 class TestNewChoiceAndQuestionSchema(TestCase):
@@ -102,7 +111,7 @@ class TestNewChoiceAndQuestionSchema(TestCase):
         
         # Data prep for Pydantic
 
-        validated_results = prepare_question_results_for_validation(question)
+        validated_results = ResultsSchema.model_validate(question)
         self.assertIsInstance(validated_results, ResultsSchema)
         self.assertEqual(validated_results.question_text, "Question 1")
         self.assertEqual(validated_results.total_votes, 2)
@@ -133,7 +142,7 @@ class TestNewChoiceAndQuestionSchema(TestCase):
         choice_1.save()
         choice_2.save()
 
-        validated_results = prepare_question_results_for_validation(question_1)
+        validated_results = ResultsSchema.model_validate(question_1)
         self.assertIsInstance(validated_results, ResultsSchema)
         self.assertEqual(validated_results.choices[0].percentage, 50.0)
         self.assertEqual(validated_results.choices[1].percentage, 50.0)
@@ -144,7 +153,7 @@ class TestNewChoiceAndQuestionSchema(TestCase):
             choice_texts=["Choice 1", "Choice 2", "Choice 3"]
         )
 
-        validated_results = prepare_question_results_for_validation(question_2)
+        validated_results = ResultsSchema.model_validate(question_2)
         self.assertIsInstance(validated_results, ResultsSchema)
         self.assertEqual(validated_results.choices[0].percentage, 0.0)
         self.assertEqual(validated_results.choices[1].percentage, 0.0)
@@ -166,14 +175,136 @@ class TestNewChoiceAndQuestionSchema(TestCase):
         c3.save()
         c4.save()
 
-        validated_results = prepare_question_results_for_validation(question_3)
+        validated_results = ResultsSchema.model_validate(question_3)
         self.assertIsInstance(validated_results, ResultsSchema)
         self.assertEqual(validated_results.choices[0].percentage, 0.0)
         self.assertEqual(validated_results.choices[1].percentage, 0.0)
         self.assertEqual(validated_results.choices[2].percentage, 0.0)
         self.assertEqual(validated_results.choices[3].percentage, 0.0)
-        
-        
+
+class TestMoreAdminSchemas(TestCase):
+    def setUp(self):
+        self.question = Question.objects.create(question_text="Old question", pub_date=timezone.now())
+        self.question.choice_set.create(choice_text="Choice A", votes=0)
+        self.question.choice_set.create(choice_text="Choice B", votes=0)
+        self.choice_a = self.question.choice_set.first()
+        self.choice_b = self.question.choice_set.last()
+
+    ## QuestionAdminSchema Tests ##
+    
+    def test_question_admin_schema_from_django_model(self):
+        """
+        Tests that QuestionAdminSchema can be created from a Django model instance.
+        """
+        validated_schema = QuestionAdminSchema.model_validate(self.question)
+        self.assertEqual(validated_schema.id, self.question.id)
+        self.assertEqual(validated_schema.question_text, "Old question")
+        self.assertIsInstance(validated_schema.choices, list)
+        self.assertEqual(len(validated_schema.choices), 2)
+        self.assertEqual(validated_schema.note_future_date, "")
+        self.assertEqual(validated_schema.note_choiceless, "")
+
+    def test_question_admin_schema_future_date_note(self):
+        """
+        Tests that the note_future_date computed field works correctly.
+        """
+        future_question = Question.objects.create(question_text="Future question", pub_date=timezone.now() + timedelta(days=1))
+        validated_schema = QuestionAdminSchema.model_validate(future_question)
+        self.assertNotEqual(validated_schema.note_future_date, "")
+
+    def test_question_admin_schema_choiceless_note(self):
+        """
+        Tests that the note_choiceless computed field works correctly.
+        """
+        choiceless_question = Question.objects.create(question_text="Choiceless question", pub_date=timezone.now())
+        validated_schema = QuestionAdminSchema.model_validate(choiceless_question)
+        self.assertNotEqual(validated_schema.note_choiceless, "")
+
+    ## NewChoiceSchema Tests ##
+
+    def test_new_choice_schema_with_default_votes(self):
+        """
+        Tests that NewChoiceSchema validates a payload without a votes field.
+        """
+        data = {"choice_text": "New choice"}
+        validated_choice = NewChoiceSchema.model_validate(data)
+        self.assertEqual(validated_choice.choice_text, "New choice")
+        self.assertEqual(validated_choice.votes, 0)
+    
+    ## ChoiceUpdateSchema Tests ##
+
+    def test_choice_update_schema_with_id(self):
+        """
+        Tests that ChoiceUpdateSchema validates a payload for an existing choice.
+        """
+        data = {"id": self.choice_a.id, "choice_text": "Updated choice A", "votes": 10}
+        validated_choice = ChoiceUpdateSchema.model_validate(data)
+        self.assertEqual(validated_choice.id, self.choice_a.id)
+        self.assertEqual(validated_choice.choice_text, "Updated choice A")
+        self.assertEqual(validated_choice.votes, 10)
+
+    def test_choice_update_schema_without_id(self):
+        """
+        Tests that ChoiceUpdateSchema validates a payload for a new choice.
+        """
+        data = {"choice_text": "New choice C", "votes": 0}
+        validated_choice = ChoiceUpdateSchema.model_validate(data)
+        self.assertIsNone(validated_choice.id)
+        self.assertEqual(validated_choice.choice_text, "New choice C")
+        self.assertEqual(validated_choice.votes, 0)
+
+    ## QuestionUpdateSchema Tests ##
+
+    def test_question_update_schema_with_updated_text_and_choices(self):
+        """
+        Tests that QuestionUpdateSchema validates a payload with updated question text and choices.
+        """
+        data = {
+            "question_text": "Updated question text",
+            "pub_date": timezone.now(),
+            "choices": [
+                {"id": self.choice_a.id, "choice_text": "Updated choice A", "votes": 1},
+                {"id": self.choice_b.id, "choice_text": "Updated choice B", "votes": 2},
+            ]
+        }
+        validated_question = QuestionUpdateSchema.model_validate(data)
+        self.assertEqual(validated_question.question_text, "Updated question text")
+        self.assertEqual(len(validated_question.choices), 2)
+        self.assertEqual(validated_question.choices[0].choice_text, "Updated choice A")
+        self.assertEqual(validated_question.choices[1].votes, 2)
+
+    def test_question_update_schema_with_new_choice(self):
+        """
+        Tests that QuestionUpdateSchema validates a payload that adds a new choice.
+        """
+        data = {
+            "question_text": "Question with new choice",
+            "pub_date": timezone.now(),
+            "choices": [
+                {"id": self.choice_a.id, "choice_text": "Choice A", "votes": 0},
+                {"id": self.choice_b.id, "choice_text": "Choice B", "votes": 0},
+                {"choice_text": "New choice C", "votes": 0} # No ID here
+            ]
+        }
+        validated_question = QuestionUpdateSchema.model_validate(data)
+        self.assertEqual(len(validated_question.choices), 3)
+        self.assertIsNone(validated_question.choices[2].id)
+        self.assertEqual(validated_question.choices[2].choice_text, "New choice C")
+    
+    def test_question_update_schema_raises_error_for_invalid_data(self):
+        """
+        Tests that QuestionUpdateSchema raises a ValidationError for invalid input.
+        """
+        invalid_data = {
+            "question_text": "Valid text",
+            "pub_date": "invalid-date", # Bad date format
+            "choices": []
+        }
+        with self.assertRaises(ValidationError):
+            QuestionUpdateSchema.model_validate(invalid_data)
+
+
+
         
         
         

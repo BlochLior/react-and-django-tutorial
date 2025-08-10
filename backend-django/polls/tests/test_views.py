@@ -1,12 +1,12 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
-import json
+from rest_framework.test import APIClient
 from datetime import timedelta
 
-from polls.models import Question, Choice
-from polls.schemas import QuestionSchema, ChoiceSchema # and so on maybe
-from polls.tests.utils import make_json_post_request, create_question_with_choices
+from polls.models import Question
+from polls.tests.utils import make_json_post_request, create_question_with_choices, make_json_put_request
+from polls.views import ADMIN_QUESTIONS_PER_PAGE
 
 # --- Client Views ---
 
@@ -47,6 +47,7 @@ class TestClientPollList(TestCase):
             days=-1,
             choice_texts=[]
         )
+        self.total_pages = 2
 
     def test_client_poll_list_returns_200_ok(self):
         """
@@ -96,7 +97,18 @@ class TestClientPollList(TestCase):
         self.assertEqual(len(response_data['results']), 2)
         self.assertIsNotNone(response_data['previous'])
         self.assertIsNone(response_data['next'])
-        
+
+    def test_client_poll_list_wrong_query_params_for_page(self):
+        """
+        Tests that the poll list view returns appropriate page for wrong query params for page.
+        """
+        response_not_int = self.client.get(self.url + "?page=not_an_int")
+        response_data = response_not_int.json()
+        self.assertEqual(1, response_data['page'])
+
+        response_page_out_of_range = self.client.get(self.url + "?page=100")
+        response_data = response_page_out_of_range.json()
+        self.assertEqual(2, response_data['page'])
 
 # --- client_poll_detail ---
 class TestClientPollDetail(TestCase):
@@ -220,13 +232,397 @@ class TestVoteView(TestCase):
         self.assertIn(b"Choice does not belong to this question", response.content)
 
 
-# class TestAdminViews(TestCase):
-    # --- admin_dashboard ---
+# --- Admin Views ---
 
-    # --- admin_question_detail ---
+# --- admin_create_question ---
+class TestAdminCreateQuestion(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse('admin_create_question')
 
-    # --- admin_create_question ---
+    def test_admin_create_question_returns_201_created(self):
+        """
+        Tests that the admin create question view returns a 201 Created status code.
+        """
+        response_data = {
+            "question_text": "Test question",
+            "pub_date": timezone.now().isoformat(),
+            "choices": [
+                {"choice_text": "Choice 1", "votes": 0},
+                {"choice_text": "Choice 2", "votes": 0}
+            ]
+        }
+        response = make_json_post_request(self.client, self.url, response_data)
+        self.assertEqual(response.status_code, 201)
 
-    # --- admin_results_summary ---
+    def test_admin_create_question_saves_correct_data(self):
+        """
+        Tests that the admin create question view saves the correct data.
+        """
+        now = timezone.now()
+        response_data = {
+            "question_text": "Test question",
+            "pub_date": now.isoformat(),
+            "choices": [
+                {"choice_text": "Choice 1", "votes": 0},
+                {"choice_text": "Choice 2", "votes": 0}
+            ]
+        }
+        make_json_post_request(self.client, self.url, response_data)
+        
+        self.assertEqual(Question.objects.count(), 1)
+        question = Question.objects.first()
+        self.assertEqual(question.question_text, "Test question")
+        self.assertEqual(question.pub_date, now)
+        self.assertEqual(question.choice_set.count(), 2)
+        self.assertEqual(question.choice_set.first().choice_text, "Choice 1")
+        self.assertEqual(question.choice_set.first().votes, 0)
+        self.assertEqual(question.choice_set.last().choice_text, "Choice 2")
+        self.assertEqual(question.choice_set.last().votes, 0)
 
+    def test_admin_create_question_returns_400_for_invalid_json(self):
+        """
+        Tests that the admin create question view returns a 400 Bad Request for malformed data.
+        """
+        invalid_data_1 = "This is not JSON"
+        response_1 = make_json_post_request(self.client, self.url, invalid_data_1)
+        self.assertEqual(response_1.status_code, 400)
+        self.assertIn(b"dictionary", response_1.content)
+
+        invalid_data_2 = {
+            "pub_date": timezone.now().isoformat(),
+            "choices": [
+                {"choice_text": "Choice 1", "votes": 0},
+                {"choice_text": "Choice 2", "votes": 0}
+            ]
+        }
+        response_2 = make_json_post_request(self.client, self.url, invalid_data_2)
+        self.assertEqual(response_2.status_code, 400)
+
+        invalid_data_3 = {
+            "question_text": "Test question",
+            "pub_date": timezone.now().isoformat(),
+            "choices": 5
+        }
+        response_3 = make_json_post_request(self.client, self.url, invalid_data_3)
+        self.assertEqual(response_3.status_code, 400)
+
+    def test_admin_create_question_returns_405_for_non_post_requests(self):
+        """
+        Tests that the admin create question view returns a 405 Method Not Allowed for non-POST requests.
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 405)
+
+    def test_admin_create_question_can_create_future_question(self):
+        """
+        Tests that the admin create question view can create a future question.
+        """
+        future_pub_date = timezone.now() + timedelta(days=5)
+        response_data = {
+            "question_text": "Test future question",
+            "pub_date": future_pub_date.isoformat(),
+            "choices": [
+                {"choice_text": "Choice 1", "votes": 0},
+                {"choice_text": "Choice 2", "votes": 0}
+            ]
+        }
+        response = make_json_post_request(self.client, self.url, response_data)
+        
+        self.assertEqual(response.status_code, 201)
+        question = Question.objects.first()
+        self.assertEqual(question.question_text, "Test future question")
+        self.assertEqual(question.pub_date, future_pub_date)
+
+    def test_admin_create_question_can_create_choiceless_question(self):
+        """
+        Tests that the admin create question view can create a question without choices.
+        """
+        response_data = {
+            "question_text": "Test choiceless question",
+            "pub_date": timezone.now().isoformat(),
+            "choices": []
+        }
+        response = make_json_post_request(self.client, self.url, response_data)
+        
+        self.assertEqual(response.status_code, 201)
+        question = Question.objects.first()
+        self.assertEqual(question.question_text, "Test choiceless question")
+        self.assertEqual(question.choice_set.count(), 0)
     
+# --- admin_dashboard ---
+class TestAdminDashboard(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse('admin_dashboard')
+
+        if self._testMethodName == "test_admin_dashboard_empty_database":
+            return
+
+        # Create a total of 19 questions for comprehensive testing
+        self.question_1_current = create_question_with_choices(
+            question_text="Test question 1 current",
+            days=0,
+            choice_texts=["Choice 1", "Choice 2"]
+        )
+        self.question_2_past = create_question_with_choices(
+            question_text="Test question 2 past",
+            days=-5,
+            choice_texts=["Choice 3", "Choice 4"]
+        )
+        self.question_3_choiceless = create_question_with_choices(
+            question_text="Test choiceless question",
+            days=-10,
+            choice_texts=[]
+        )
+        self.question_4_future = create_question_with_choices(
+            question_text="Test future question",
+            days=15,
+            choice_texts=["Choice 5", "Choice 6"]
+        )
+        # Create 15 additional questions for a total of 19
+        for i in range(5, 20):
+            setattr(self, f"question_{i}", create_question_with_choices(
+                question_text=f"Test question {i}",
+                days=-(20 - i),
+                choice_texts=[f"Choice {i}"]
+            ))
+
+
+    def test_admin_dashboard_returns_200_ok(self):
+        """
+        Tests that the admin dashboard view returns a 200 OK status code.
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_admin_dashboard_returns_all_existing_questions_and_data(self):
+        """
+        Tests that the admin dashboard view returns all existing questions and their data.
+        """
+        response = self.client.get(self.url, {'page_size': 20})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["results"]), 19)
+        self.assertEqual(response.data["count"], 19)
+
+        q_texts_in_response = [q["question_text"] for q in response.data["results"]]
+        self.assertIn("Test question 1 current", q_texts_in_response)
+        self.assertIn("Test choiceless question", q_texts_in_response)
+        self.assertIn("Test future question", q_texts_in_response)
+        
+    def test_admin_dashboard_empty_database(self):
+        """
+        Tests that the admin dashboard view returns an empty list when the database is empty.
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["results"]), 0)
+        self.assertEqual(response.data["count"], 0)
+
+    def test_admin_dashboard_paginates_questions(self):
+        """
+        Tests that the admin dashboard view paginates questions.
+        """
+        # Test first page
+        response_page_1 = self.client.get(self.url)
+        self.assertEqual(len(response_page_1.data["results"]), 10)
+        self.assertEqual(response_page_1.data["count"], 19)
+        self.assertIsNotNone(response_page_1.data["next"])
+        self.assertIsNone(response_page_1.data["previous"])
+
+        # Test second page
+        response_page_2 = self.client.get(self.url, {"page": 2})
+        self.assertEqual(len(response_page_2.data["results"]), 9)
+        self.assertIsNone(response_page_2.data["next"])
+        self.assertIsNotNone(response_page_2.data["previous"])
+
+    def test_admin_dashboard_wrong_query_params_for_page(self):
+        """
+        Tests that the admin dashboard view returns appropriate pages for wrong query params for page.
+        """
+        response_invalid_page_type = self.client.get(self.url, {"page": "invalid"})
+        response_invalid_page_type_data = response_invalid_page_type.json()
+        self.assertEqual(response_invalid_page_type_data["page"], 1)
+
+        response_invalid_page_number = self.client.get(self.url, {"page": 100})
+        response_invalid_page_number_data = response_invalid_page_number.json()
+        self.assertEqual(response_invalid_page_number_data["page"], 2)
+
+    def test_admin_dashboard_wrong_query_params_for_page_size(self):
+        """
+        Tests that the admin dashboard view returns appropriate page sizes for wrong query params for page size.
+        """
+        response_invalid_page_size_type = self.client.get(self.url, {"page_size": "invalid"})
+        response_invalid_page_size_type_data = response_invalid_page_size_type.json()
+        self.assertEqual(response_invalid_page_size_type_data["page_size"], ADMIN_QUESTIONS_PER_PAGE)
+
+        response_invalid_page_size_number = self.client.get(self.url, {"page_size": -100})
+        response_invalid_page_size_number_data = response_invalid_page_size_number.json()
+        self.assertEqual(response_invalid_page_size_number_data["page_size"], ADMIN_QUESTIONS_PER_PAGE)
+
+# --- admin_question_detail ---
+class TestAdminQuestionDetail(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.question = create_question_with_choices(
+            question_text="Detail test question",
+            days=0,
+            choice_texts=["Choice A", "Choice B"]
+        )
+        self.url = reverse('admin_question_detail', args=[self.question.id])
+        self.non_existent_url = reverse('admin_question_detail', args=[999])
+
+    def test_get_existing_question_returns_200_ok(self):
+        """
+        Tests that a GET request for a valid question ID returns a 200 OK and correct data.
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['question_text'], "Detail test question")
+        self.assertEqual(len(response.data['choices']), 2)
+
+    def test_get_nonexistent_question_returns_404_not_found(self):
+        """
+        Tests that a GET request for a non-existent question ID returns a 404 Not Found.
+        """
+        response = self.client.get(self.non_existent_url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_put_update_question_text_returns_200_ok(self):
+        """
+        Tests that a PUT request can update a question's text.
+        """
+        valid_pub_date = timezone.now().isoformat()
+        new_data = {
+            "question_text": "Updated question text",
+            "pub_date": valid_pub_date,
+            "choices": [
+                {"id": self.question.choice_set.first().id, "choice_text": "Choice A", "votes": 0},
+                {"id": self.question.choice_set.last().id, "choice_text": "Choice B", "votes": 0},
+            ]
+        }
+        response = make_json_put_request(self.client, self.url, new_data)
+        self.assertEqual(response.status_code, 200)
+        self.question.refresh_from_db()
+        self.assertEqual(self.question.question_text, "Updated question text")
+
+    def test_put_add_new_choice_returns_200_ok(self):
+        """
+        Tests that a PUT request can add a new choice to a question.
+        """
+        new_data = {
+            "question_text": self.question.question_text,
+            "pub_date": timezone.now().isoformat(),
+            "choices": [
+                {"id": self.question.choice_set.first().id, "choice_text": "Choice A", "votes": 0},
+                {"id": self.question.choice_set.last().id, "choice_text": "Choice B", "votes": 0},
+                {"choice_text": "New Choice", "votes": 0}
+            ]
+        }
+        response = make_json_put_request(self.client, self.url, new_data)
+        self.assertEqual(response.status_code, 200)
+        self.question.refresh_from_db()
+        self.assertEqual(self.question.choice_set.count(), 3)
+        self.assertTrue(self.question.choice_set.filter(choice_text="New Choice").exists())
+
+    def test_put_invalid_data_returns_400_bad_request(self):
+        """
+        Tests that a PUT request with invalid data returns a 400 Bad Request.
+        """
+        invalid_data = {
+            "question_text": "This is a test",
+            "pub_date": "not-a-valid-date"
+        }
+        response = make_json_put_request(self.client, self.url, invalid_data)
+        self.assertEqual(response.status_code, 400)
+        self.question.refresh_from_db()
+        self.assertEqual(self.question.question_text, "Detail test question")
+
+    def test_delete_existing_question_returns_204_no_content(self):
+        """
+        Tests that a DELETE request for a valid question ID returns a 204 No Content.
+        """
+        response = self.client.delete(self.url)
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Question.objects.filter(pk=self.question.id).exists())
+
+    def test_delete_nonexistent_question_returns_404_not_found(self):
+        """
+        Tests that a DELETE request for a non-existent question ID returns a 404 Not Found.
+        """
+        response = self.client.delete(self.non_existent_url)
+        self.assertEqual(response.status_code, 404)
+
+# --- admin_results_summary ---
+class TestAdminResultsSummary(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('summary')
+        
+        self.q1 = Question.objects.create(question_text="Question 1", pub_date=timezone.now())
+        self.c1_1 = self.q1.choice_set.create(choice_text="C1", votes=5)
+        self.c1_2 = self.q1.choice_set.create(choice_text="C2", votes=5)
+        
+        self.q2 = Question.objects.create(question_text="Question 2", pub_date=timezone.now() - timedelta(days=1))
+        self.c2_1 = self.q2.choice_set.create(choice_text="C1", votes=10)
+        self.c2_2 = self.q2.choice_set.create(choice_text="C2", votes=0)
+        self.c2_3 = self.q2.choice_set.create(choice_text="C3", votes=10)
+        
+        self.q3_choiceless = Question.objects.create(question_text="Question 3", pub_date=timezone.now() - timedelta(days=2))
+
+    def test_get_results_summary_returns_200_ok(self):
+        """
+        Tests that the results summary view returns a 200 OK status.
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_get_results_summary_correct_structure(self):
+        """
+        Tests that the results summary view returns the expected data structure.
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(len(response.data['questions_results']), 3)
+        self.assertIn('total_questions', response.data)
+        self.assertIn('total_votes_all_questions', response.data)
+        self.assertIn('questions_results', response.data)
+    
+    def test_get_results_summary_correct_aggregation(self):
+        """
+        Tests that the results summary view correctly aggregates data for all questions.
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.data['total_questions'], 3)
+        self.assertEqual(response.data['total_votes_all_questions'], 30) # 10 + 20 + 0
+    
+    def test_get_results_summary_per_question_data(self):
+        """
+        Tests that the results summary view correctly returns per-question data,
+        including votes and percentages.
+        """
+        response = self.client.get(self.url)
+        
+        q1_data = response.data['questions_results'][0]
+        self.assertEqual(q1_data['id'], self.q1.id)
+        self.assertEqual(q1_data['question_text'], "Question 1")
+        self.assertEqual(q1_data['total_votes'], 10)
+        self.assertEqual(q1_data['choices'][0]['percentage'], 50.0)
+        self.assertEqual(q1_data['choices'][1]['percentage'], 50.0)
+
+        q2_data = response.data['questions_results'][1]
+        self.assertEqual(q2_data['id'], self.q2.id)
+        self.assertEqual(q2_data['total_votes'], 20)
+        self.assertEqual(q2_data['choices'][0]['percentage'], 50.0)
+        self.assertEqual(q2_data['choices'][1]['percentage'], 0.0)
+        self.assertEqual(q2_data['choices'][2]['percentage'], 50.0)
+
+    def test_results_summary_choiceless_question(self):
+        """
+        Tests that a question with no choices is handled correctly.
+        """
+        response = self.client.get(self.url)
+        
+        q3_data = response.data['questions_results'][2]
+        self.assertEqual(q3_data['id'], self.q3_choiceless.id)
+        self.assertEqual(q3_data['total_votes'], 0)
+        self.assertEqual(len(q3_data['choices']), 0)

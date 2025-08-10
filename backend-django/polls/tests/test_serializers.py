@@ -1,5 +1,4 @@
 from django.test import TestCase
-from django.utils import timezone
 from polls.tests.utils import create_question_with_choices
 from polls.serializers import serialize_question_with_choices, serialize_question_with_choices_admin
 from polls.schemas import QuestionSchema, QuestionAdminSchema, ChoiceSchema

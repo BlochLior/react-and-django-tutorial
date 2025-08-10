@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 from django.utils import timezone
-from django.db import models
 from datetime import datetime
+from typing import Optional
 
 # --- Client Schemas ---
 
@@ -56,11 +56,18 @@ class QuestionAdminSchema(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
-    @model_validator(mode="before")
+    @model_validator(mode='before')
     def validate_related_fields(cls, data):
+        # This validator correctly handles the conversion from Django's manager to a list.
         if not isinstance(data, dict):
-            if hasattr(data, "choice_set") and isinstance(data.choice_set, models.Manager):
-                data.choice_set = list(data.choice_set.all())
+            # We must create a new dictionary to pass to Pydantic
+            # to avoid the TypeError for direct assignment.
+            return {
+                "id": data.id,
+                "question_text": data.question_text,
+                "pub_date": data.pub_date,
+                "choice_set": list(data.choice_set.all())
+            }
         return data
         
 
@@ -95,6 +102,22 @@ class NewQuestionSchema(BaseModel):
     pub_date: datetime = Field(default_factory=timezone.now)
     choices: list[NewChoiceSchema] = []
 
+class ChoiceUpdateSchema(BaseModel):
+    id: Optional[int] = None
+    choice_text: str
+    votes: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+class QuestionUpdateSchema(BaseModel):
+    """
+    Schema for updating a question and its choices.
+    The choices field is optional and defaults to an empty list.
+    """
+    # No id because it is in the URL for restful API
+    question_text: str
+    pub_date: datetime = Field(default_factory=timezone.now)
+    choices: list[ChoiceUpdateSchema] = []
 
 class ResultsChoiceSchema(BaseModel):
     choice_text: str
@@ -104,8 +127,63 @@ class ResultsChoiceSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class ResultsSchema(BaseModel):
+    """
+    Schema for a question in the results summary.
+    """
+    id: int
     question_text: str
+    pub_date: datetime
     total_votes: int
     choices: list[ResultsChoiceSchema]
     
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode='before')
+    def calculate_total_votes(cls, data):
+        if not isinstance(data, dict):
+            # Calculate total_votes and percentages before validation
+            choices = list(data.choice_set.all())
+            total_votes = sum(c.votes for c in choices)
+            
+            # Update the choices with percentage
+            for choice in choices:
+                choice.percentage = (choice.votes / total_votes) * 100 if total_votes > 0 else 0.0
+
+            return {
+                "id": data.id,
+                "question_text": data.question_text,
+                "pub_date": data.pub_date,
+                "total_votes": total_votes,
+                "choices": choices
+            }
+        return data
+
+class ResultsSummarySchema(BaseModel):
+    """
+    Schema for the overall results summary of all questions.
+    """
+    total_questions: int
+    total_votes_all_questions: int
+    questions_results: list[ResultsSchema]
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode='before')
+    def prepare_summary_data(cls, data):
+        if isinstance(data, list):
+            total_questions = len(data)
+            questions_results = []
+            total_votes_all_questions = 0
+
+            for question in data:
+                # Use the ResultsSchema to process each question
+                validated_question = ResultsSchema.model_validate(question)
+                questions_results.append(validated_question)
+                total_votes_all_questions += validated_question.total_votes
+            
+            return {
+                "total_questions": total_questions,
+                "total_votes_all_questions": total_votes_all_questions,
+                "questions_results": questions_results
+            }
+        return data

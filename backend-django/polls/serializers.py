@@ -1,6 +1,5 @@
 from .schemas import QuestionSchema, QuestionAdminSchema
 from .models import Question
-from django.utils import timezone
 
 def serialize_question_with_choices(question_obj: Question) -> QuestionSchema:
     """
