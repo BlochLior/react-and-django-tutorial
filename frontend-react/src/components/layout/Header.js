@@ -1,0 +1,14 @@
+import { Link } from 'react-router-dom';
+
+function Header() {
+  return (
+    <nav>
+      <ul>
+        <li><Link to="/">Polls</Link></li>
+        <li><Link to="/admin">Admin</Link></li>
+      </ul>
+    </nav>
+  );
+}
+
+export default Header;
