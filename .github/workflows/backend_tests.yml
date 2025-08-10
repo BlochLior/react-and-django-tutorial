@@ -91,6 +91,8 @@ jobs:
       - name: Run Safety (Dependency Vulnerability Check)
         run: uv run safety scan -o safety_report.json || true
         working-directory: backend-django
+        env:
+          SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
 
       # --- End Linting & Security Checks ---
 
