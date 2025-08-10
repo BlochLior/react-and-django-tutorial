@@ -1,30 +1,32 @@
-function QuestionCard({ question, onAnswerChange, selectedChoice }) {
-    const handleChange = (e) => {
-        const choiceId = parseInt(e.target.value, 10)
-        onAnswerChange(question.id, choiceId);
-    };
-    return (
-      <div className="question-card">
-        <h4>{question.question_text}</h4>
-        <form>
-          {question.choices.map(choice => (
-            <div key={choice.id}>
+import React from 'react';
+
+function QuestionCard({ question, selectedAnswer, onAnswerChange }) {
+  const handleChange = (choiceId) => {
+    // Call the onAnswerChange function with the questionId and the new choiceId
+    onAnswerChange(question.id, choiceId);
+  };
+
+  return (
+    <div className="question-card">
+      <h4>{question.question_text}</h4>
+      <ul>
+        {question.choices.map(choice => (
+          <li key={choice.id}>
+            <label>
               <input
-                type="radio"
-                id={`choice-${choice.id}`}
-                name={`question-${question.id}`}
-                value={choice.id}
-                checked={selectedChoice === choice.id}
-                onChange={handleChange}
-              />
-              <label htmlFor={`choice-${choice.id}`}>
+                  type="radio"
+                  name={`question-${question.id}`}
+                  value={String(choice.id)}
+                  checked={selectedAnswer === choice.id}
+                  onChange={() => handleChange(choice.id)}
+                />
                 {choice.choice_text}
-              </label>
-            </div>
-          ))}
-        </form>
-      </div>
-    );
+            </label>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 export default QuestionCard;

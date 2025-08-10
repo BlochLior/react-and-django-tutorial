@@ -14,7 +14,13 @@ const mockQuestions = [
 describe('QuestionList', () => {
   // Test 1: Renders a list of questions
   test('renders a list of QuestionCards when given an array of questions', () => {
-    render(<QuestionList questions={mockQuestions} />);
+    const mockSelectedAnswers = {};
+    const mockOnAnswerChange = jest.fn();
+    render(<QuestionList 
+      questions={mockQuestions}
+      selectedAnswers={mockSelectedAnswers}
+      onAnswerChange={mockOnAnswerChange}
+    />);
     
     // Check if both mock questions are rendered
     expect(screen.getByTestId('question-card-1')).toBeInTheDocument();
@@ -23,7 +29,13 @@ describe('QuestionList', () => {
 
   // Test 2: Renders a message when no questions are available
   test('renders "No polls available" message when given an empty array', () => {
-    render(<QuestionList questions={[]} />);
+    const mockSelectedAnswers = {};
+    const mockOnAnswerChange = jest.fn();
+    render(<QuestionList 
+      questions={[]}
+      selectedAnswers={mockSelectedAnswers}
+      onAnswerChange={mockOnAnswerChange}
+    />);
     
     // Check for the specific no-polls message
     expect(screen.getByText('No polls available at the moment.')).toBeInTheDocument();

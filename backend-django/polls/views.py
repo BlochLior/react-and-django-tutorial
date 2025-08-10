@@ -86,11 +86,18 @@ def vote(request: Request):
     Handles a POST request to update vote counts for a poll
     """
     try:
+        # Print the raw data for debugging
+        print("Received data:", request.data)
         submission = PollSubmissionSchema.model_validate(request.data)
     except ValidationError as e:
+        # Print the validation error's JSON to the console
+        print("Pydantic ValidationError:", e.json())
         return Response({"error": e.json()}, status=status.HTTP_400_BAD_REQUEST)
 
     votes_dict = submission.votes
+
+    if not votes_dict:
+        return Response({"error": "No votes provided"}, status=status.HTTP_400_BAD_REQUEST)
 
     for question_id, choice_id in votes_dict.items():
         try:

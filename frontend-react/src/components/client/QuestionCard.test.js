@@ -41,7 +41,7 @@ const mockQuestion = {
     // Test 3: Correctly highlights the selected choice
     test('correctly highlights the selected choice based on prop', () => {
       const selectedChoiceId = 102;
-      render(<QuestionCard question={mockQuestion} selectedChoice={selectedChoiceId} />);
+      render(<QuestionCard question={mockQuestion} selectedAnswer={selectedChoiceId} />);
   
       // Find the 'Blue' radio button and check if it's checked
       const blueRadio = screen.getByLabelText('Blue');
