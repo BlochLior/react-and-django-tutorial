@@ -89,7 +89,7 @@ jobs:
           BANDIT_SKIP_TESTS: 1
 
       - name: Run Safety (Dependency Vulnerability Check)
-        run: uv run safety scan -o safety_report.json || true
+        run: uv run safety scan --stage production -o safety_report.json || true
         working-directory: backend-django
         env:
           SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
