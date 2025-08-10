@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/layout/Header'; // Placeholder for Header component
 import PollsContainer from './pages/client/PollsContainer'; // Placeholder for PollsContainer component
-import FinalReviewPage from './pages/client/FinalReviewPage'; // Placeholder
+import ReviewPage from './pages/client/ReviewPage'; // Placeholder
 import AdminDashboard from './pages/admin/AdminDashboard'; // Placeholder
 import QuestionDetail from './pages/admin/QuestionDetail'; // Placeholder
 import NewQuestionForm from './pages/admin/NewQuestionForm'; // Placeholder
@@ -17,7 +17,7 @@ function App() {
           <Routes>
             {/* Client Routes */}
             <Route path="/polls" element={<PollsContainer />} />
-            <Route path="/polls/review" element={<FinalReviewPage />} />
+            <Route path="/polls/review" element={<ReviewPage />} />
   
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />
