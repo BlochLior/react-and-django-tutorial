@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Pagination from '../../components/ui/Pagination'; // Will be created later
-import QuestionList from '../../components/client/QuestionList'; // TODO: currently don't have a client subfolder, need to think if should be added
+import QuestionList from '../../components/client/QuestionList'; 
 import ReviewPage from './ReviewPage';
 import { useNavigate } from 'react-router-dom';
 
