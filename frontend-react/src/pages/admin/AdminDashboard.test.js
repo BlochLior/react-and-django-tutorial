@@ -13,10 +13,13 @@ jest.mock('../../components/admin/AdminQuestionList', () => () => <div data-test
 describe('AdminDashboard', () => {
   // Mock the API response for a successful fetch
   const mockApiResponse = {
-    data: [
-      { id: 1, question_text: 'Question A', choices: [] },
-      { id: 2, question_text: 'Question B', choices: [] },
-    ],
+    data: {
+      count: 2,
+      results: [
+        { id: 1, question_text: 'Question A', choices: [] },
+        { id: 2, question_text: 'Question B', choices: [] },
+      ],
+    },
   };
 
   test('renders loading message initially', () => {

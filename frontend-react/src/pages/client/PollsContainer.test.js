@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import axios from 'axios';
 import PollsContainer from './PollsContainer';
 import { useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router } from 'react-router-dom';
 
 // Mock axios to control API responses
 jest.mock('axios');
@@ -62,7 +63,7 @@ describe('PollsContainer', () => {
   test('renders loading message initially', () => {
     // Mock a pending promise to keep the component in a loading state
     axios.get.mockResolvedValue(new Promise(() => {}));
-    render(<PollsContainer />);
+    render(<Router><PollsContainer /></Router>);
     expect(screen.getByText('Loading polls...')).toBeInTheDocument();
   });
 
@@ -79,7 +80,7 @@ describe('PollsContainer', () => {
     };
     axios.get.mockResolvedValue(mockApiResponse);
 
-    render(<PollsContainer />);
+    render(<Router><PollsContainer /></Router>);
 
     // Use findByTestId to wait for the asynchronous update to finish
     await screen.findByTestId('question-list');
@@ -95,7 +96,7 @@ describe('PollsContainer', () => {
     // Mock a failed response
     axios.get.mockRejectedValue(new Error('Network Error'));
 
-    render(<PollsContainer />);
+    render(<Router><PollsContainer /></Router>);
     
     // Use a regular expression to match the error message flexibly
     const errorMessage = await screen.findByText(/Error:/i);
@@ -122,7 +123,7 @@ describe('PollsContainer - Vote Submission', () => {
     axios.get.mockResolvedValue(mockPollsResponse);
     axios.post.mockResolvedValue({ status: 201 });
 
-    render(<PollsContainer />);
+    render(<Router><PollsContainer /></Router>);
 
     // 1. Wait for the polls to load and the "Review Answers" button to appear
     const reviewButton = await screen.findByRole('button', { name: /review answers/i });
@@ -151,7 +152,7 @@ describe('PollsContainer - Vote Submission', () => {
     axios.get.mockResolvedValue(mockPollsResponse);
     axios.post.mockRejectedValue(new Error('Submission failed'));
 
-    render(<PollsContainer />);
+    render(<Router><PollsContainer /></Router>);
 
     // 1. Wait for the polls to load and the "Review Answers" button to appear
     const reviewButton = await screen.findByRole('button', { name: /review answers/i });
@@ -208,7 +209,7 @@ describe('PollsContainer - Pagination', () => {
 
       axios.get.mockResolvedValueOnce(mockApiResponsePage1);
       
-      render(<PollsContainer />);
+      render(<Router><PollsContainer /></Router>);
       
       // Wait for the first page to load
       await screen.findByTestId('pagination');

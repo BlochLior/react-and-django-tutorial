@@ -124,11 +124,18 @@ def admin_create_question(request: Request):
     except ValidationError as e:
         return Response({"errors": e.errors()}, status=status.HTTP_400_BAD_REQUEST)
     
+    # DEBUG
+    print("Validated Data:", validated_data)
+
     # Create the question
     question = Question.objects.create(
         question_text=validated_data.question_text,
         pub_date=validated_data.pub_date
     )
+    
+    # DEBUG
+    print("Created Question:", question)
+    print("Question ID:", question.id)
     
     # Create choices for the question
     for choice in validated_data.choices:
