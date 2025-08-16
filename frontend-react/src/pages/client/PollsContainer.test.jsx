@@ -64,7 +64,7 @@ describe('PollsContainer', () => {
     // Mock a pending promise to keep the component in a loading state
     axios.get.mockResolvedValue(new Promise(() => {}));
     render(<Router><PollsContainer /></Router>);
-    expect(screen.getByText('Loading polls...')).toBeInTheDocument();
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
   // Test 2: Renders polls on successful API response
@@ -86,7 +86,7 @@ describe('PollsContainer', () => {
     await screen.findByTestId('question-list');
 
     // Assert that the loading message is gone and the components are rendered
-    expect(screen.queryByText('Loading polls...')).not.toBeInTheDocument();
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
     expect(screen.getByTestId('question-list')).toBeInTheDocument();
     expect(screen.getByTestId('pagination')).toBeInTheDocument();
   });

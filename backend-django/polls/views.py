@@ -36,24 +36,39 @@ def client_poll_list(request: Request):
         choice__isnull=False
     ).distinct().order_by('-pub_date')
 
+    # Check for the 'page_size=all' parameter
+    page_size = request.query_params.get('page_size')
+    if page_size == 'all':
+        serialized_questions = [
+            serialize_question_with_choices(q).model_dump()
+            for q in questions_queryset
+        ]
+        response_data = {
+            'count': questions_queryset.count(),
+            'next': None,
+            'previous': None,
+            'page': 1,
+            'total_pages': 1,
+            'results': serialized_questions
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    # Normal pagination logic
     paginator = Paginator(questions_queryset, QUESTIONS_PER_PAGE)
     page_number = request.query_params.get('page', 1)
 
     try: 
         page_obj = paginator.page(page_number)
     except PageNotAnInteger:
-        # if a page is not an integer, deliver first page.
         page_obj = paginator.page(1)
     except EmptyPage:
-        # if a page is out of range, deliver last page of results.
         page_obj = paginator.page(paginator.num_pages)
-    
+
     serialized_questions = [
         serialize_question_with_choices(q).model_dump()
         for q in page_obj
     ]
 
-    # Build the response metadata and data
     response_data = {
         'count': paginator.count,
         'next': page_obj.next_page_number() if page_obj.has_next() else None,

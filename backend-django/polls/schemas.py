@@ -105,7 +105,7 @@ class NewQuestionSchema(BaseModel):
 class ChoiceUpdateSchema(BaseModel):
     id: Optional[int] = None
     choice_text: str
-    votes: int
+    votes: Optional[int] = 0
 
     model_config = ConfigDict(from_attributes=True)
 
