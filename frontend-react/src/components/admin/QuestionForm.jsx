@@ -21,6 +21,10 @@ const QuestionForm = ({
   deleteButton = null,
   submitButtonText = 'Submit Question',
 }) => {
+  const [datePart, timePart] = pubDate ? pubDate.split('T') : ['', ''];
+  const hour = timePart ? timePart.substring(0, 2) : '00';
+  const minute = timePart ? timePart.substring(3, 5) : '00';
+
   return (
     <div className="question-form-container">
       <h1>{title}</h1>
@@ -51,12 +55,12 @@ const QuestionForm = ({
             <div className="time-adjuster">
               <div className="time-unit">
                 <button type="button" onClick={() => adjustDateTime('hour', 1)} aria-label="Increment hour"><FaChevronUp /></button>
-                <span aria-label="Current hour">{pubDate.split('T')[1].substring(0, 2)}h</span>
+                <span aria-label="Current hour">{hour}h</span>
                 <button type="button" onClick={() => adjustDateTime('hour', -1)} aria-label="Decrement hour"><FaChevronDown /></button>
               </div>
               <div className="time-unit">
                 <button type="button" onClick={() => adjustDateTime('minute', 1)} aria-label="Increment minute"><FaChevronUp /></button>
-                <span aria-label="Current minute">{pubDate.split('T')[1].substring(3, 5)}m</span>
+                <span aria-label="Current minute">{minute}m</span>
                 <button type="button" onClick={() => adjustDateTime('minute', -1)} aria-label="Decrement minute"><FaChevronDown /></button>
               </div>
             </div>

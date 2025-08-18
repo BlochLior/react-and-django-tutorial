@@ -6,6 +6,7 @@ function Header() {
       <ul>
         <li><Link to="/polls">Polls</Link></li>
         <li><Link to="/admin">Admin</Link></li>
+        <li><Link to="/admin/results/">Results</Link></li>
       </ul>
     </nav>
   );

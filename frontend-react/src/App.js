@@ -21,7 +21,7 @@ function App() {
           {/* Admin Routes */}
           <Route path="/admin/" element={<AdminDashboard />} />
           <Route path="/admin/new/" element={<NewQuestion />} />
-          <Route path="/admin/questions/summary/" element={<ResultsSummary />} />
+          <Route path="/admin/results/" element={<ResultsSummary />} />
           <Route path="/admin/questions/:questionId/" element={<QuestionDetail />} />
         </Routes> 
       </main>

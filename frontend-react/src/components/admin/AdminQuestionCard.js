@@ -9,9 +9,6 @@ function AdminQuestionCard({ question }) {
         <Link to={`/admin/questions/${question.id}`}>
           <button>Edit</button>
         </Link>
-        <Link to={`/admin/results/${question.id}`}>
-          <button>View Results</button>
-        </Link>
       </div>
     </div>
   );

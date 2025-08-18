@@ -1,27 +1,28 @@
 import { useState, useEffect } from 'react';
 import { format, parseISO, isFuture } from 'date-fns';
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 const useQuestionFormLogic = (initialData = null, onSubmit) => {
     // Initialize with default values for the first render
     const [questionText, setQuestionText] = useState('');
-    const [choices, setChoices] = useState([{ choice_text: '' }, { choice_text: '' }]);
-    const [pubDate, setPubDate] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
+    const [choices, setChoices] = useState(initialData?.choices || [{ choice_text: '' }, { choice_text: '' }]);
+    const [pubDate, setPubDate] = useState(
+        initialData?.pub_date
+            ? formatInTimeZone(parseISO(initialData.pub_date), 'UTC', "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+            : formatInTimeZone(new Date(), 'UTC', "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+    );
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Use a useEffect to synchronize the form state with the fetched initialData
+    // This useEffect is crucial for when initialData is fetched asynchronously
     useEffect(() => {
-        console.log('useEffect triggered. Initial Data:', initialData);
         if (initialData) {
             setQuestionText(initialData.question_text || '');
             setChoices(initialData.choices || []);
-    
-            const dateToFormat = initialData.pub_date ? parseISO(initialData.pub_date) : new Date();
-            // Change this line to match the UTC format
-            setPubDate(format(dateToFormat, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
+            setPubDate(initialData.pub_date || formatInTimeZone(new Date(), 'UTC', "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
         }
     }, [initialData]);
-
+    
     const handleFormSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -54,9 +55,12 @@ const useQuestionFormLogic = (initialData = null, onSubmit) => {
         noChoicesNote = "Note: Current question has no choices.";
     }
 
-    const pubDateObj = parseISO(pubDate);
-    if (isFuture(pubDateObj)) {
-        futureDateNote = `Note: Current question is set to publish on ${format(pubDateObj, 'yyyy-MM-dd', { timeZone: 'UTC' })} at ${format(pubDateObj, 'HH:mm', { timeZone: 'UTC' })}`;
+    if (pubDate) {
+        const pubDateObj = parseISO(pubDate);
+        if (isFuture(pubDateObj)) {
+            const zonedDate = toZonedTime(pubDateObj, 'UTC');
+            futureDateNote = `Note: Current question is set to publish on ${format(zonedDate, 'yyyy-MM-dd')} at ${format(zonedDate, 'HH:mm')}`;
+        }
     }
 
     // Submission disabled if:
@@ -69,7 +73,7 @@ const useQuestionFormLogic = (initialData = null, onSubmit) => {
         const newDate = parseISO(pubDate);
         if (unit === 'hour') newDate.setUTCHours(newDate.getUTCHours() + amount);
         if (unit === 'minute') newDate.setUTCMinutes(newDate.getUTCMinutes() + amount);
-        setPubDate(format(newDate, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
+        setPubDate(formatInTimeZone(newDate, 'UTC', "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
     };
 
     const handleAddChoice = () => setChoices([...choices, { choice_text: '' }]);

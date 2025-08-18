@@ -22,6 +22,5 @@ describe('AdminQuestionCard', () => {
 
     expect(screen.getByText(mockQuestion.question_text)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /edit/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /view results/i })).toBeInTheDocument();
   });
 });
