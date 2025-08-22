@@ -9,7 +9,7 @@ ehthumbs.db
 
 # IDE/Editor Specific Files
 .idea/             # IntelliJ/WebStorm/PyCharm
-.vscode/           # VS Code (if you have local settings or extensions in here)
+.vscode/           
 *.iml
 *.iws
 *.ipr
