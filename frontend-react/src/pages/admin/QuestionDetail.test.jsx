@@ -16,6 +16,8 @@ jest.mock('react-router-dom', () => ({
 // Mock the axios module to control API responses
 jest.mock('axios');
 
+// The tests here use the mock handlers defined in handlers.js
+
 describe('Question Detail View', () => {
     const setup = async (initialEntries = ['/admin/questions/123/']) => {
         mockUseNavigate.mockClear();

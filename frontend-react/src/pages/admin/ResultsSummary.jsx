@@ -12,7 +12,6 @@ const ResultsSummary = () => {
   useEffect(() => {
     const fetchResults = async () => {
       try {
-        // Change the API call to the new endpoint
         const response = await axios.get(`${API_BASE_URL}admin/summary/`);
         setSummary(response.data);
       } catch (err) {
@@ -22,7 +21,7 @@ const ResultsSummary = () => {
       }
     };
     fetchResults();
-  }, []); // The dependency array is empty because this component fetches all results, not a specific ID.
+  }, []); 
 
   if (loading) {
     return <div className="results-container">Loading results...</div>;

@@ -1,6 +1,10 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import Pagination from './Pagination';
 
+// Use of fireEvent: 
+// A low-level API for simulating user interactions with the DOM.
+// as such, no need for higher level interactions such as userEvent.
+
 describe('Pagination', () => {
   // Test 1: Renders correctly with full controls
   test('renders with all controls enabled when not on first or last page', () => {

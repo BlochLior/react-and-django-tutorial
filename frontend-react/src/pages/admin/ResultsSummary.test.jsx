@@ -14,7 +14,7 @@ const mockFullSummaryData = {
     {
       "id": 1,
       "question_text": "What is your favorite color?",
-      "total_votes": 35, // Add total_votes property here
+      "total_votes": 35,
       "choices": [
         { "id": 1, "choice_text": "Red", "votes": 10 },
         { "id": 2, "choice_text": "Blue", "votes": 20 },

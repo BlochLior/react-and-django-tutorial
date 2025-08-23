@@ -1,8 +1,13 @@
 import { rest } from 'msw';
 
+// Intercepts API requests that match the handlers here,
+// due to the setupTests.js file;
+// In a better project, these handlers would handle all API requests,
+// and as such the backend would be mocked entirely.
+
 export const handlers = [
     // Mock GET request for a specific question
-    rest.get('http://127.0.0.1:8000/admin/questions/:questionId/', (req, res, ctx) => { // TODO: check if this is the correct endpoint
+    rest.get('http://127.0.0.1:8000/admin/questions/:questionId/', (req, res, ctx) => { 
       const { questionId } = req.params;
       if (questionId === '123') {
         return res(
@@ -22,7 +27,7 @@ export const handlers = [
     }),
   
     // Mock PUT request for updating a question
-    rest.put('http://127.0.0.1:8000/admin/questions/:questionId/', (req, res, ctx) => { // TODO: check if this is the correct endpoint
+    rest.put('http://127.0.0.1:8000/admin/questions/:questionId/', (req, res, ctx) => { 
       const { questionId } = req.params;
       const { question_text, choices } = req.body;
       if (questionId === '123' && question_text === 'What is your favorite color?Updated Question' && choices.length === 2) {
@@ -32,7 +37,7 @@ export const handlers = [
     }),
   
     // Mock DELETE request for a question
-    rest.delete('http://127.0.0.1:8000/admin/questions/:questionId/', (req, res, ctx) => { // TODO: check if this is the correct endpoint
+    rest.delete('http://127.0.0.1:8000/admin/questions/:questionId/', (req, res, ctx) => { 
       const { questionId } = req.params;
       if (questionId === '123') {
         return res(ctx.status(204));

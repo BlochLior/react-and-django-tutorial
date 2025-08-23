@@ -6,11 +6,17 @@ const useQuestionFormLogic = (initialData = null, onSubmit) => {
     // Initialize with default values for the first render
     const [questionText, setQuestionText] = useState('');
     const [choices, setChoices] = useState(initialData?.choices || [{ choice_text: '' }, { choice_text: '' }]);
+    // ?. - optional chaining - if initialData is null, it will not throw an error, 
+    // and would just go to the default value that is provided after the '||'
+
     const [pubDate, setPubDate] = useState(
         initialData?.pub_date
             ? formatInTimeZone(parseISO(initialData.pub_date), 'UTC', "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
             : formatInTimeZone(new Date(), 'UTC', "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
     );
+    // the 'initialData?.pub_date' is the condition - if initialData exists and has a pub_date, 
+    // it will use that pub_date, otherwise it will use the current date and time
+    
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -65,7 +71,7 @@ const useQuestionFormLogic = (initialData = null, onSubmit) => {
 
     // Submission disabled if:
     // 1. question text is empty
-    // 2. there are choices, but at least one is empty
+    // 2. loading is true
     const isSubmitDisabled = !questionText || loading;
     
     const adjustDateTime = (unit, amount) => {

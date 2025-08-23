@@ -13,7 +13,7 @@ function PollsContainer() {
     const [error, setError] = useState(null);
 
     const [allPolls, setAllPolls] = useState([]);
-    const [loadingAllPolls, setLoadingAllPolls] = useState(false); // New state for loading all polls
+    const [loadingAllPolls, setLoadingAllPolls] = useState(false); 
 
     const [paginationInfo, setPaginationInfo] = useState({
         page: 1,
@@ -68,7 +68,6 @@ function PollsContainer() {
         fetchPolls(currentPage);
     }, [currentPage]);
 
-    // New handler for the review button
     const handleReviewClick = async () => {
         await fetchAllPollsForReview(); // Wait for all polls to load
         setIsReviewing(true); // Only then, switch to review mode

@@ -7,7 +7,7 @@ import { BrowserRouter as Router } from 'react-router-dom';
 // Mock axios to simulate API calls
 jest.mock('axios');
 
-// Mock child components to isolate the test # TODO: don't have this component yet
+// Mock child components to isolate the test
 jest.mock('../../components/admin/AdminQuestionList', () => () => <div data-testid="admin-question-list" />);
 
 describe('AdminDashboard', () => {
