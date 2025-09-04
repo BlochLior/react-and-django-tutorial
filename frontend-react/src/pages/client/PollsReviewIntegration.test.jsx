@@ -119,9 +119,16 @@ describe('Polls-Review Page Integration', () => {
     mockUseMutation.mockReset();
     mockNavigate.mockReset();
     
-    // Set up centralized default mocks (using mockReturnValue, not mockReturnValueOnce)
+    // Set up centralized default mocks (using mockImplementation to call onSuccess callback)
     // The component calls useQuery twice, so we need a stable mock that works for both calls
-    mockUseQuery.mockReturnValue(createMockPollsQuery());
+    mockUseQuery.mockImplementation((queryFn, deps, options) => {
+      const mockResponse = createMockPollsQuery();
+      // Call the onSuccess callback asynchronously to avoid infinite loops
+      if (options?.onSuccess && mockResponse.data) {
+        setTimeout(() => options.onSuccess(mockResponse.data), 0);
+      }
+      return mockResponse;
+    });
     
     // Set up default mutation mock with navigation callback
     mockSubmitVotes = jest.fn().mockResolvedValue({ success: true });
@@ -393,9 +400,16 @@ describe('Polls-Review Page Integration', () => {
       };
       
       // Override the default query mock for pagination scenario
-      mockUseQuery.mockReturnValue(createMockPollsQuery({ 
-        data: paginatedResponse 
-      }));
+      mockUseQuery.mockImplementation((queryFn, deps, options) => {
+        const mockResponse = createMockPollsQuery({ 
+          data: paginatedResponse 
+        });
+        // Call the onSuccess callback asynchronously to avoid infinite loops
+        if (options?.onSuccess && mockResponse.data) {
+          setTimeout(() => options.onSuccess(mockResponse.data), 0);
+        }
+        return mockResponse;
+      });
       
       render(
         <QueryChakraRouterWrapper>
@@ -403,8 +417,10 @@ describe('Polls-Review Page Integration', () => {
         </QueryChakraRouterWrapper>
       );
 
-      // Verify pagination is rendered
-      expect(screen.getByTestId('pagination')).toBeInTheDocument();
+      // Wait for the onSuccess callback to be called and verify pagination is rendered
+      await waitFor(() => {
+        expect(screen.getByTestId('pagination')).toBeInTheDocument();
+      });
       
       // Verify pagination buttons exist (the actual enabled/disabled state depends on onSuccess callback)
       expect(screen.getByText('next')).toBeInTheDocument();

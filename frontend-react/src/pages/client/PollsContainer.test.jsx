@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PollsContainer from './PollsContainer';
 import { QueryChakraRouterWrapper } from '../../test-utils';
@@ -145,19 +145,29 @@ describe('PollsContainer - Unit Tests', () => {
       page: 1,
     };
     
-    // Mock the useQuery hook to return success state
-    mockUseQuery.mockReturnValue({
-      data: mockApiResponse,
-      loading: false,
-      error: null
+    // Mock the useQuery hook to return success state and call onSuccess callback
+    mockUseQuery.mockImplementation((queryFn, deps, options) => {
+      // Call the onSuccess callback asynchronously to avoid infinite loops
+      if (options?.onSuccess) {
+        setTimeout(() => options.onSuccess(mockApiResponse), 0);
+      }
+      return {
+        data: mockApiResponse,
+        loading: false,
+        error: null
+      };
     });
 
     render(<PollsContainer />, { wrapper: QueryChakraRouterWrapper });
 
-    // The component should immediately show the polls
+    // Wait for the onSuccess callback to be called
+    await waitFor(() => {
+      expect(screen.getByTestId('pagination')).toBeInTheDocument();
+    });
+
+    // The component should show the polls
     expect(screen.queryByText('Loading polls...')).not.toBeInTheDocument();
     expect(screen.getByTestId('question-list')).toBeInTheDocument();
-    expect(screen.getByTestId('pagination')).toBeInTheDocument();
   });
   
   // Test 3: Renders error message on API fetch failure
@@ -176,11 +186,34 @@ describe('PollsContainer - Unit Tests', () => {
   });
 
   // Test 4: Renders pagination component
-  test('renders pagination component', () => {
+  test('renders pagination component', async () => {
+    const mockApiResponse = {
+      results: [{ id: 1, question_text: 'Test Question' }],
+      next: null,
+      previous: null,
+      total_pages: 1,
+      page: 1,
+    };
+    
+    // Mock the useQuery hook to return success state and call onSuccess callback
+    mockUseQuery.mockImplementation((queryFn, deps, options) => {
+      // Call the onSuccess callback asynchronously to avoid infinite loops
+      if (options?.onSuccess) {
+        setTimeout(() => options.onSuccess(mockApiResponse), 0);
+      }
+      return {
+        data: mockApiResponse,
+        loading: false,
+        error: null
+      };
+    });
+    
     render(<PollsContainer />, { wrapper: QueryChakraRouterWrapper });
     
-    // The component should show the pagination
-    expect(screen.getByTestId('pagination')).toBeInTheDocument();
+    // Wait for the onSuccess callback to be called
+    await waitFor(() => {
+      expect(screen.getByTestId('pagination')).toBeInTheDocument();
+    });
   });
 
   // Test 5: Review Answers button behavior when no answers selected
