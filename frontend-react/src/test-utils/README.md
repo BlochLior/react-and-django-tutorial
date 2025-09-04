@@ -2,8 +2,6 @@
 
 This directory contains centralized test utilities designed to make testing more streamlined, consistent, and maintainable across the React frontend application.
 
-todo: need to update the readme since it is somewhat irrelevant at parts.
-
 ## Overview
 
 The test utilities follow DRY (Don't Repeat Yourself) principles and provide:

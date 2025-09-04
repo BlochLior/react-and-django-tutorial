@@ -2,6 +2,8 @@
 
 A modern, full-stack polling application built with **React** (frontend) and **Django** (backend). This project demonstrates enterprise-level development practices with comprehensive testing, performance optimization, and maintainable architecture.
 
+todo: need to update the readme since it is somewhat irrelevant at parts.
+
 ## 🎯 Project Overview
 
 This is a **production-ready polling application** that allows users to:
