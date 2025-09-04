@@ -264,6 +264,7 @@ Both frontend and backend include Docker support for containerized deployment.
 - **Real-time Features**: WebSocket support for live voting updates
 - **Mobile App**: React Native mobile application
 - **Analytics Dashboard**: Advanced analytics and reporting features
+- **Cache fixing**: Fix cache issues between admin and client.
 
 ## 📞 Support & Resources
 
@@ -278,10 +279,6 @@ Both frontend and backend include Docker support for containerized deployment.
 - **Backend Documentation**: `backend-django/README.md`
 - **Test Examples**: Reference existing test files for patterns
 - **API Testing**: Use Postman collection in `backend-django/postman_tests/`
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🎯 Project Status
 
