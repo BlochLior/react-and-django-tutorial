@@ -1,4 +1,20 @@
 import React from 'react';
+import {
+    Box,
+    VStack,
+    Heading,
+    Text,
+    Button,
+    Card,
+    CardBody,
+    Badge,
+    HStack,
+    Divider,
+    List,
+    ListItem,
+    ListIcon
+} from '@chakra-ui/react';
+import { FaCheck, FaExclamationTriangle, FaPaperPlane } from 'react-icons/fa';
 
 function ReviewPage({ questions, selectedAnswers, onSubmit }) {
     // Filter questions into answered and unanswered lists
@@ -17,43 +33,106 @@ function ReviewPage({ questions, selectedAnswers, onSubmit }) {
     };
 
     return (
-        <div className="review-page">
-            <h2>Review Your Answers</h2>
+        <Box maxW="4xl" mx="auto">
+            <VStack spacing={8} align="stretch">
+                <Heading as="h2" size="xl" textAlign="center" color="teal.600">
+                    Review Your Answers
+                </Heading>
 
-            {/* Display answered questions */}
-            <h3>Answered Questions</h3>
-            {answeredQuestions.length > 0 ? (
-                answeredQuestions.map((question) => (
-                    <div key={question.id}>
-                        <h4>{question.question_text}</h4>
-                        <p>
-                            Your answer:{' '}
-                            {getChoiceText(question.id, selectedAnswers[question.id])}
-                        </p>
-                    </div>
-                ))
-            ) : (
-                <p>You haven't answered any questions yet.</p>
-            )}
+                {/* Stats Summary */}
+                <HStack justify="center" spacing={6}>
+                    <Badge colorScheme="green" p={2} fontSize="sm">
+                        <FaCheck style={{ display: 'inline', marginRight: '4px' }} />
+                        {answeredQuestions.length} Answered
+                    </Badge>
+                    <Badge colorScheme="orange" p={2} fontSize="sm">
+                        <FaExclamationTriangle style={{ display: 'inline', marginRight: '4px' }} />
+                        {unansweredQuestions.length} Remaining
+                    </Badge>
+                </HStack>
 
-            <hr />
+                {/* Display answered questions */}
+                <Box>
+                    <Heading as="h3" size="lg" mb={4} color="green.600">
+                        Answered Questions
+                    </Heading>
+                    {answeredQuestions.length > 0 ? (
+                        <VStack spacing={4} align="stretch">
+                            {answeredQuestions.map((question) => (
+                                <Card key={question.id} variant="outline" borderColor="green.200">
+                                    <CardBody>
+                                        <VStack align="stretch" spacing={2}>
+                                            <Text fontWeight="medium" color="gray.700">
+                                                {question.question_text}
+                                            </Text>
+                                            <HStack>
+                                                <Badge colorScheme="green" size="sm">
+                                                    Your answer:
+                                                </Badge>
+                                                <Text fontSize="sm" color="green.600" fontWeight="medium">
+                                                    {getChoiceText(question.id, selectedAnswers[question.id])}
+                                                </Text>
+                                            </HStack>
+                                        </VStack>
+                                    </CardBody>
+                                </Card>
+                            ))}
+                        </VStack>
+                    ) : (
+                        <Text color="gray.500" textAlign="center" py={8}>
+                            You haven't answered any questions yet.
+                        </Text>
+                    )}
+                </Box>
 
-            {/* Display a list of unanswered questions */}
-            <h3>Unanswered Questions</h3>
-            {unansweredQuestions.length > 0 ? (
-                <ul>
-                    {unansweredQuestions.map((question) => (
-                        <li key={question.id}>{question.question_text}</li>
-                    ))}
-                </ul>
-            ) : (
-                <p>All questions have been answered!</p>
-            )}
+                <Divider />
 
-            <hr />
+                {/* Display a list of unanswered questions */}
+                <Box>
+                    <Heading as="h3" size="lg" mb={4} color="orange.600">
+                        Unanswered Questions
+                    </Heading>
+                    {unansweredQuestions.length > 0 ? (
+                        <List spacing={3}>
+                            {unansweredQuestions.map((question) => (
+                                <ListItem key={question.id}>
+                                    <ListIcon as={FaExclamationTriangle} color="orange.400" />
+                                    <Text as="span" color="gray.700">
+                                        {question.question_text}
+                                    </Text>
+                                </ListItem>
+                            ))}
+                        </List>
+                    ) : (
+                        <Text color="green.500" textAlign="center" py={8} fontWeight="medium">
+                            🎉 All questions have been answered!
+                        </Text>
+                    )}
+                </Box>
 
-            <button onClick={onSubmit}>Submit Votes</button>
-        </div>
+                <Divider />
+
+                <Box textAlign="center">
+                    <Button
+                        leftIcon={<FaPaperPlane />}
+                        colorScheme="teal"
+                        size="lg"
+                        onClick={onSubmit}
+                        px={12}
+                        py={6}
+                        fontSize="lg"
+                        isDisabled={answeredQuestions.length === 0}
+                    >
+                        Submit All Votes
+                    </Button>
+                    {answeredQuestions.length === 0 && (
+                        <Text fontSize="sm" color="gray.500" mt={2}>
+                            Please answer at least one question before submitting
+                        </Text>
+                    )}
+                </Box>
+            </VStack>
+        </Box>
     );
 }
 

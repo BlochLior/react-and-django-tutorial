@@ -1,81 +1,89 @@
 // src/pages/client/ReviewPage.test.jsx
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { render } from '../../test-utils';
+import { TEST_SCENARIOS } from '../../test-utils/test-data';
 import ReviewPage from './ReviewPage';
 
-const mockQuestions = [
-    {
-        id: 1,
-        question_text: 'What is your favorite color?',
-        choices: [
-            { id: 101, choice_text: 'Red' },
-            { id: 102, choice_text: 'Blue' },
-        ],
-    },
-    {
-        id: 2,
-        question_text: 'What is your favorite animal?',
-        choices: [
-            { id: 201, choice_text: 'Dog' },
-            { id: 202, choice_text: 'Cat' },
-        ],
-    },
-];
-
-const mockSelectedAnswers = {
-    1: 102, // User selected 'Blue'
-    2: 201, // User selected 'Dog'
-};
-
 describe('ReviewPage', () => {
-    // Test 1: Renders correctly with selected answers
-    test('renders a list of questions and their selected choices', () => {
-        render(
-            <ReviewPage
-                questions={mockQuestions}
-                selectedAnswers={mockSelectedAnswers}
-                onSubmit={() => {}}
-            />
-        );
+  const renderReviewPage = (props = {}) => {
+    const defaultProps = {
+      questions: TEST_SCENARIOS.MULTIPLE_QUESTIONS.questions,
+      selectedAnswers: TEST_SCENARIOS.MULTIPLE_QUESTIONS.selectedAnswers,
+      onSubmit: jest.fn(),
+    };
+    
+    return render(<ReviewPage {...defaultProps} {...props} />);
+  };
 
-        // Assert that each question is displayed
-        expect(screen.getByText('What is your favorite color?')).toBeInTheDocument();
-        expect(screen.getByText('What is your favorite animal?')).toBeInTheDocument();
+  describe('Rendering', () => {
+    test('renders questions and their selected choices', () => {
+      renderReviewPage();
 
-        // Assert that the correct choice is displayed for each question
-        expect(screen.getByText('Your answer: Blue')).toBeInTheDocument();
-        expect(screen.getByText('Your answer: Dog')).toBeInTheDocument();
+      // Assert that each question is displayed
+      expect(screen.getByText('Question 1')).toBeInTheDocument();
+      expect(screen.getByText('Question 2')).toBeInTheDocument();
+      expect(screen.getByText('Question 3')).toBeInTheDocument();
+
+      // Assert that the "Your answer:" badge and choice text are displayed separately
+      // Since there are multiple "Your answer:" badges, use getAllByText
+      const answerBadges = screen.getAllByText('Your answer:');
+      expect(answerBadges).toHaveLength(3); // Should have 3 badges for 3 questions
+      
+      expect(screen.getByText('Choice A for Q1')).toBeInTheDocument();
+      expect(screen.getByText('Choice A for Q2')).toBeInTheDocument();
+      expect(screen.getByText('Choice A for Q3')).toBeInTheDocument();
     });
 
-    // Test 2: Handles questions with no selected answers
-    test('displays a list of unanswered questions', () => {
-        const incompleteAnswers = { 1: 102 }; // Only one answer selected
+    test('renders submit button', () => {
+      renderReviewPage();
 
-        render(
-            <ReviewPage
-                questions={mockQuestions}
-                selectedAnswers={incompleteAnswers}
-                onSubmit={() => {}}
-            />
-        );
+      expect(screen.getByRole('button', { name: /submit all votes/i })).toBeInTheDocument();
+    });
+  });
 
-        // The refactored component now displays the unanswered question text directly.
-        // The test should check for the presence of the unanswered question.
-        expect(screen.getByText('What is your favorite animal?')).toBeInTheDocument();
+  describe('Edge Cases', () => {
+    test('handles questions with no selected answers', () => {
+      renderReviewPage({
+        questions: TEST_SCENARIOS.INCOMPLETE_ANSWERS.questions,
+        selectedAnswers: TEST_SCENARIOS.INCOMPLETE_ANSWERS.selectedAnswers,
+      });
+
+      // Should display unanswered questions
+      expect(screen.getByText('Question 2')).toBeInTheDocument();
     });
 
-    // Test 3: Displays a submit button
-    test('renders a submit button', () => {
-        render(
-            <ReviewPage
-                questions={mockQuestions}
-                selectedAnswers={mockSelectedAnswers}
-                onSubmit={() => {}}
-            />
-        );
+    test('handles empty questions array', () => {
+      renderReviewPage({
+        questions: [],
+        selectedAnswers: {},
+      });
 
-        // Assert that a button with the text 'Submit Votes' is in the document
-        expect(screen.getByRole('button', { name: /submit votes/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /submit all votes/i })).toBeInTheDocument();
     });
+
+    test('handles single question', () => {
+      renderReviewPage({
+        questions: TEST_SCENARIOS.SINGLE_QUESTION.questions,
+        selectedAnswers: TEST_SCENARIOS.SINGLE_QUESTION.selectedAnswers,
+      });
+
+      expect(screen.getByText('What is your favorite color?')).toBeInTheDocument();
+      expect(screen.getByText('Your answer:')).toBeInTheDocument();
+      expect(screen.getByText('Red')).toBeInTheDocument();
+    });
+  });
+
+  describe('User Interactions', () => {
+    test('calls onSubmit when submit button is clicked', async () => {
+      const mockOnSubmit = jest.fn();
+      renderReviewPage({ onSubmit: mockOnSubmit });
+
+      const submitButton = screen.getByRole('button', { name: /submit all votes/i });
+      submitButton.click();
+
+      expect(mockOnSubmit).toHaveBeenCalledTimes(1);
+    });
+  });
 });

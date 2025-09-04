@@ -5,6 +5,7 @@ from . import views
 app_name = 'polls'
 urlpatterns = [
     path('', views.client_poll_list, name='client_poll_list'),
+    # TODO: the client_poll_detail url might not be used in the frontend.
     path('<int:pk>/', views.client_poll_detail, name='client_poll_detail'),
     path('vote/', views.vote, name='vote'),
 ]

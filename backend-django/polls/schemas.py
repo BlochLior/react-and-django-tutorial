@@ -32,6 +32,7 @@ class PollSubmissionSchema(BaseModel):
     """
     PollSubmissionSchema is a model inherited from BaseModel of pydantic.
     It is used to validate the poll submission data.
+    Meaning - voting validation.
     """
     votes: dict[int, int]
     
@@ -70,13 +71,14 @@ class QuestionAdminSchema(BaseModel):
             }
         return data
         
-
+    # TODO: this might be duplicated and existing in the frontend as a standalone functionality
     @computed_field
     def note_future_date(self) -> str:
         if self.pub_date > timezone.now():
             return "This question is in the future"
         return ""
     
+    # TODO: this might be duplicated and existing in the frontend as a standalone functionality
     @computed_field
     def note_choiceless(self) -> str:
         if not self.choices:
@@ -139,6 +141,7 @@ class ResultsSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @model_validator(mode='before')
+    # TODO: this might be duplicated and existing in the frontend as a standalone functionality
     def calculate_total_votes(cls, data):
         if not isinstance(data, dict):
             # Calculate total_votes and percentages before validation

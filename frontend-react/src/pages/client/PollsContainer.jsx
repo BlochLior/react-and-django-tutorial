@@ -1,75 +1,110 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useState, useCallback } from 'react';
+import {
+    Box,
+    VStack,
+    Heading,
+    Button,
+    Center
+} from '@chakra-ui/react';
+import { FaEye } from 'react-icons/fa';
 import Pagination from '../../components/ui/Pagination';
 import QuestionList from '../../components/client/QuestionList';
 import ReviewPage from './ReviewPage';
+import usePageTitle from '../../hooks/usePageTitle';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-
-const API_BASE_URL = 'http://127.0.0.1:8000/polls/'
+import { pollsApi } from '../../services/apiService';
+import LoadingState from '../../components/ui/LoadingState';
+import ErrorState from '../../components/ui/ErrorState';
+import useQuery from '../../hooks/useQuery';
+import useMutation from '../../hooks/useMutation';
 
 function PollsContainer() {
-    const [polls, setPolls] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    const [allPolls, setAllPolls] = useState([]);
-    const [loadingAllPolls, setLoadingAllPolls] = useState(false); 
 
     const [paginationInfo, setPaginationInfo] = useState({
         page: 1,
-        total_pages: 1,
+        total_pages: null,
         hasPrevious: false,
         hasNext: false,
     });
     const [selectedAnswers, setSelectedAnswers] = useState({});
     const [isReviewing, setIsReviewing] = useState(false);
-    const [submissionError, setSubmissionError] = useState(null);
+
+    // Dynamic title based on current state
+    usePageTitle(isReviewing ? 'Review Answers - Polling App' : 'Polls - Polling App');
 
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
     const currentPage = parseInt(searchParams.get('page'), 10) || 1;
 
-    const fetchPolls = async (page) => {
-        setLoading(true);
-        try {
-            const response = await axios.get(`${API_BASE_URL}?page=${page}`);
-            setPolls(response.data.results);
-            setPaginationInfo({
-                page: response.data.page,
-                total_pages: response.data.total_pages,
-                hasPrevious: !!response.data.previous,
-                hasNext: !!response.data.next,
-            });
-            setError(null);
-        } catch (error) {
-            setError('Error: Failed to fetch polls');
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
-    
-    // A separate function to fetch ALL polls for the review page
-    const fetchAllPollsForReview = async () => {
-        setLoadingAllPolls(true); // Start loading
-        try {
-            const response = await axios.get(`${API_BASE_URL}?page_size=all`);
-            setAllPolls(response.data.results);
-        } catch (error) {
-            console.error('Error fetching all polls:', error);
-            setError('Error fetching all polls for review.');
-        } finally {
-            setLoadingAllPolls(false); // End loading
-        }
-    };
-
-    useEffect(() => {
-        fetchPolls(currentPage);
+    // Create stable query functions
+    const getPollsQuery = useCallback(async () => {
+        return pollsApi.getPolls(currentPage);
     }, [currentPage]);
 
+    const getAllPollsQuery = useCallback(async () => {
+        return pollsApi.getAllPolls();
+    }, []);
+
+    // Memoize the onSuccess callback to prevent infinite re-renders
+    const onPollsSuccess = useCallback((data) => {
+        setPaginationInfo({
+            page: data.page,
+            total_pages: data.total_pages,
+            hasPrevious: !!data.previous,
+            hasNext: !!data.next,
+        });
+    }, []);
+
+    // Using custom query hook for data fetching
+    const { 
+        data: pollsResponse,
+        loading,
+        error
+    } = useQuery(
+        getPollsQuery,
+        [currentPage],
+        { 
+            errorMessage: 'Failed to fetch polls.',
+            onSuccess: onPollsSuccess
+        }
+    );
+
+    const polls = pollsResponse?.results || [];
+
+    // Using custom mutation hook for vote submission
+    const [submitVotes, { error: submissionError }] = useMutation(
+        pollsApi.submitVotes,
+        {
+            errorMessage: 'Failed to submit votes.',
+            onSuccess: () => {
+                navigate('/success');
+            }
+        }
+    );
+
+    // Using custom query hook for fetching all polls for review
+    const { 
+        data: allPollsResponse,
+        loading: loadingAllPolls,
+        error: allPollsError,
+        refetch: refetchAllPolls 
+    } = useQuery(
+        getAllPollsQuery,
+        [],
+        { 
+            errorMessage: 'Failed to fetch all polls for review.',
+            enabled: false // Only fetch when needed
+        }
+    );
+
     const handleReviewClick = async () => {
-        await fetchAllPollsForReview(); // Wait for all polls to load
+        // Only allow review if user has answered at least one question
+        if (Object.keys(selectedAnswers).length === 0) {
+            return; // Don't proceed if no answers selected
+        }
+        
+        await refetchAllPolls(); // Wait for all polls to load
         setIsReviewing(true); // Only then, switch to review mode
     };
 
@@ -85,59 +120,89 @@ function PollsContainer() {
     };
 
     const handleVoteSubmission = async () => {
-        setSubmissionError(null);
-        try {
-            const votes_dict = {};
-            for (const questionId in selectedAnswers) {
-                votes_dict[parseInt(questionId, 10)] = parseInt(selectedAnswers[questionId], 10);
-            }
-
-            await axios.post(`${API_BASE_URL}vote/`, { votes: votes_dict });
-            navigate('/success');
-        } catch (err) {
-            console.error(err);
-            setSubmissionError('Error: Failed to submit votes');
+        const votes_dict = {};
+        for (const questionId in selectedAnswers) {
+            votes_dict[parseInt(questionId, 10)] = parseInt(selectedAnswers[questionId], 10);
         }
+
+        await submitVotes(votes_dict);
     };
 
-    if (loading || loadingAllPolls) {
-        return <div className="loading">Loading...</div>;
+    if (loading) {
+        return (
+            <LoadingState 
+                message="Loading polls..." 
+            />
+        );
     }
 
-    if (error) {
-        return <div className="error">{error}</div>;
+    if (loadingAllPolls && isReviewing) {
+        return (
+            <LoadingState 
+                message="Loading all questions for review..." 
+            />
+        );
+    }
+
+    if (error || allPollsError) {
+        return <ErrorState message={error || allPollsError} />;
     }
 
     if (isReviewing) {
         return (
-            <div className="polls-container">
+            <Box py={8}>
                 <ReviewPage
-                    questions={allPolls} // Pass the complete list of polls
+                    questions={allPollsResponse?.results || []} // Pass the complete list of polls
                     selectedAnswers={selectedAnswers}
                     onSubmit={handleVoteSubmission}
                 />
-                {submissionError && <div className="error">{submissionError}</div>}
-            </div>
+                {submissionError && (
+                    <ErrorState message={submissionError} />
+                )}
+            </Box>
         );
     }
 
     return (
-        <div className="polls-container">
-            <h1>Polls</h1>
-            <QuestionList
-                questions={polls}
-                selectedAnswers={selectedAnswers}
-                onAnswerChange={handleAnswerChange}
-            />
-            <Pagination
-                currentPage={paginationInfo.page}
-                totalPages={paginationInfo.total_pages}
-                onPageChange={handlePageChange}
-                hasPrevious={paginationInfo.hasPrevious}
-                hasNext={paginationInfo.hasNext}
-            />
-            <button onClick={handleReviewClick}>Review Answers</button>
-        </div>
+        <Box py={8}>
+            <VStack spacing={8} align="stretch">
+                <Heading as="h1" size="xl" textAlign="center" color="teal.600">
+                    Polls
+                </Heading>
+                
+                <QuestionList
+                    questions={polls}
+                    selectedAnswers={selectedAnswers}
+                    onAnswerChange={handleAnswerChange}
+                />
+                
+                {paginationInfo.total_pages !== null && (
+                    <Box display="flex" justifyContent="center">
+                        <Pagination
+                            currentPage={paginationInfo.page}
+                            totalPages={paginationInfo.total_pages}
+                            onPageChange={handlePageChange}
+                            hasPrevious={paginationInfo.hasPrevious}
+                            hasNext={paginationInfo.hasNext}
+                            data-testid="pagination"
+                        />
+                    </Box>
+                )}
+                
+                <Center>
+                    <Button
+                        leftIcon={<FaEye />}
+                        colorScheme="teal"
+                        size="lg"
+                        onClick={handleReviewClick}
+                        isDisabled={Object.keys(selectedAnswers).length === 0}
+                        title={Object.keys(selectedAnswers).length === 0 ? "Please answer at least one question to review" : "Review your answers"}
+                    >
+                        Review Answers
+                    </Button>
+                </Center>
+            </VStack>
+        </Box>
     );
 }
 
