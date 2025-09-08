@@ -30,7 +30,7 @@ backend-django/
 │   ├── schemas.py        # Pydantic validation schemas
 │   ├── urls.py           # Application URL routing
 │   └── admin_urls.py     # Admin-specific endpoints
-├── postman_tests/         # API testing collection
+├── postman_tests/         # API testing collection - usage is deprecated
 ├── scripts/               # Utility scripts
 │   └── wait_for_mysql.py # MySQL connection readiness checker
 ├── sql/                   # Database scripts and migrations
@@ -45,69 +45,6 @@ backend-django/
 - **Python**: 3.12 or higher
 - **Database**: MySQL 8.0+
 - **Package Manager**: uv (recommended) or pip
-
-## 🛠️ Installation & Setup
-
-### 1. Clone the Repository
-
-```bash
-git clone <repository-url>
-cd backend-django
-```
-
-### 2. Set Up Virtual Environment
-
-```bash
-# Using uv (recommended)
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Or using standard Python
-python -m venv .venv
-source .venv/bin/activate
-```
-
-### 3. Install Dependencies
-
-```bash
-# Using uv
-uv sync
-
-# Or using pip
-pip install -r requirements.txt
-```
-
-### 4. Environment Configuration
-
-Create a `.env` file in the project root:
-
-```env
-SECRET_KEY=your-secret-key-here
-DATABASE_URL=mysql://username:password@localhost:3306/polls_db
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-```
-
-### 5. Database Setup
-
-```bash
-# Wait for MySQL to be ready (if using Docker)
-python scripts/wait_for_mysql.py
-
-# Run migrations
-python manage.py migrate
-
-# Create superuser (optional)
-python manage.py createsuperuser
-```
-
-### 6. Run the Development Server
-
-```bash
-python manage.py runserver
-```
-
-The API will be available at `http://localhost:8000/`
 
 ## 🗄️ Database Models
 
@@ -126,54 +63,23 @@ The API will be available at `http://localhost:8000/`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/polls/` | List all published polls with pagination |
-| `GET` | `/api/polls/<id>/` | Get specific poll details |
-| `POST` | `/api/polls/<id>/vote/` | Submit a vote for a choice |
+| `GET` | `/polls/` | List all published polls |
+| `GET` | `/polls/<id>/` | Get specific poll details |
+| `POST` | `/polls/vote/` | Submit a vote |
 
 ### Admin Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/admin/polls/` | List all polls (admin view) |
-| `POST` | `/api/admin/polls/` | Create a new poll |
-| `PUT` | `/api/admin/polls/<id>/` | Update an existing poll |
-| `DELETE` | `/api/admin/polls/<id>/` | Delete a poll |
-| `GET` | `/api/admin/polls/<id>/results/` | Get detailed results for a poll |
+| `GET` | `/admin/` | Admin dashboard |
+| `GET` | `/admin/summary/` | Results summary |
+| `POST` | `/admin/create/` | Create a new poll |
+| `GET` | `/admin/questions/<id>/` | Get detailed poll results and management |
 
 ### Query Parameters
 
 - `page`: Page number for pagination
 - `page_size`: Number of items per page (or `all` for all items)
-
-## 🧪 Testing
-
-### Run Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=polls --cov-report=html
-
-# Run specific test file
-pytest polls/tests/test_views.py
-```
-
-### Coverage Report
-
-After running tests with coverage, view the HTML report:
-
-```bash
-# Open coverage report
-open htmlcov/index.html  # macOS
-xdg-open htmlcov/index.html  # Linux
-start htmlcov/index.html  # Windows
-```
-
-### Postman Collection
-
-Import the Postman collection from `postman_tests/Django_Polls_API.postman_collection.json` to test the API endpoints.
 
 ## 🔧 Development Tools
 
@@ -181,62 +87,30 @@ Import the Postman collection from `postman_tests/Django_Polls_API.postman_colle
 
 ```bash
 # Lint with Ruff
-ruff check .
+uv run ruff check .
 
 # Format with Ruff
-ruff format .
+uv run ruff format .
 
 # Type checking with MyPy
-mypy .
+uv run mypy .
 
 # Pyright type checking
-pyright
+uv run pyright
 
 # Pylint
-pylint polls/ mysite/
+uv run pylint polls/ mysite/
 ```
 
 ### Security Scanning
 
 ```bash
 # Run Bandit security checks
-bandit -r .
+uv run bandit -r .
 
 # Run Safety checks
-safety check
+uv run safety check
 ```
-
-### Pre-commit Hooks
-
-The project includes configuration for various code quality tools. Consider setting up pre-commit hooks for automated quality checks.
-
-## 🚀 Deployment
-
-### Production Checklist
-
-1. **Environment Variables**
-   - Set `DEBUG=False`
-   - Configure production `SECRET_KEY`
-   - Set production `DATABASE_URL`
-   - Configure `ALLOWED_HOSTS`
-
-2. **Database**
-   - Use production MySQL instance
-   - Configure connection pooling
-   - Set up database backups
-
-3. **Static Files**
-   - Run `python manage.py collectstatic`
-   - Configure static file serving
-
-4. **Security**
-   - Enable HTTPS
-   - Configure CORS properly
-   - Set secure headers
-
-### Docker Support
-
-The project includes a `wait_for_mysql.py` script for containerized environments. Use it in your Docker setup to ensure database connectivity.
 
 ## 📚 Dependencies
 
@@ -256,38 +130,3 @@ The project includes a `wait_for_mysql.py` script for containerized environments
 - **bandit**: Security linter
 - **safety**: Dependency vulnerability scanner
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and quality checks
-5. Submit a pull request
-
-### Code Style
-
-- Follow PEP 8 guidelines
-- Use type hints throughout
-- Write comprehensive docstrings
-- Maintain test coverage above 90%
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Support
-
-For issues and questions:
-1. Check the existing issues
-2. Create a new issue with detailed information
-3. Include error logs and reproduction steps
-
-## 🔗 Related Projects
-
-- Frontend React application (if applicable)
-- Docker configuration
-- CI/CD pipeline configuration
-
----
-
-**Built with ❤️ using Django and modern Python development practices**

@@ -20,6 +20,7 @@ import useMutation from '../../hooks/useMutation';
 
 function PollsContainer() {
 
+    // State for pagination information
     const [paginationInfo, setPaginationInfo] = useState({
         page: 1,
         total_pages: null,
@@ -42,6 +43,7 @@ function PollsContainer() {
         return pollsApi.getPolls(currentPage);
     }, [currentPage]);
 
+    // Create stable query function for fetching all polls for review and submit votes
     const getAllPollsQuery = useCallback(async () => {
         return pollsApi.getAllPolls();
     }, []);

@@ -9,6 +9,8 @@ global.TextDecoder = TextDecoder;
 global.TransformStream = TransformStream;
 
 // Mock ResizeObserver for react-datepicker
+// used for example in the QuestionForm.jsx DatePicker component,
+// from the react-datepicker library
 global.ResizeObserver = class ResizeObserver {
   observe() {}
   unobserve() {}

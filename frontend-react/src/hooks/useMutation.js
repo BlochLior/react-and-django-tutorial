@@ -1,6 +1,8 @@
 import { useMutation as useReactQueryMutation } from '@tanstack/react-query';
 import { handleApiError } from '../services/apiService';
 
+// handles write operations from the API
+
 /**
  * Custom hook wrapper for React Query's useMutation
  * Maintains the same API as the previous custom hook

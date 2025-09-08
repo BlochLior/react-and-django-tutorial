@@ -2,6 +2,8 @@ import { useQuery as useReactQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { handleApiError } from '../services/apiService';
 
+// Handles read operations from the API
+
 /**
  * Custom hook wrapper for React Query's useQuery
  * Maintains the same API as the previous custom hook

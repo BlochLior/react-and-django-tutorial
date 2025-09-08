@@ -1,8 +1,6 @@
 # React & Django Polls Application
 
-A modern, full-stack polling application built with **React** (frontend) and **Django** (backend). This project demonstrates enterprise-level development practices with comprehensive testing, performance optimization, and maintainable architecture.
-
-todo: need to update the readme since it is somewhat irrelevant at parts.
+A modern, full-stack polling application built with **React** (frontend) and **Django** (backend), and a **MySQL** database to maintain the data. This project demonstrates enterprise-level development practices with comprehensive testing, performance optimization, and maintainable architecture. 
 
 ## 🎯 Project Overview
 
@@ -24,7 +22,6 @@ react-and-django-tutorial/
 │   ├── polls/            # Main Django application
 │   ├── mysite/           # Django project settings
 │   └── README.md         # Backend-specific documentation
-├── docs/                 # 📖 Project-wide documentation
 └── README.md             # This file - Project overview
 ```
 
@@ -34,13 +31,13 @@ react-and-django-tutorial/
 
 - **Node.js**: 18+ (for React frontend)
 - **Python**: 3.12+ (for Django backend)
-- **MySQL**: 8.0+ (database)
-- **Package Managers**: npm (Node.js) and uv/pip (Python)
+- **MariaDB**: 10.0+ (database)
+- **Package Managers**: npm (Node.js) and uv (Python)
 
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/BlochLior/react-and-django-tutorial
 cd react-and-django-tutorial
 ```
 
@@ -51,7 +48,6 @@ cd backend-django
 
 # Set up virtual environment
 uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
 uv sync
@@ -60,12 +56,12 @@ uv sync
 cp .env.example .env  # Create and configure .env file
 
 # Database setup
-python scripts/wait_for_mysql.py
+
 python manage.py migrate
 python manage.py createsuperuser  # Optional
 
 # Start backend server
-python manage.py runserver
+uv run manage.py runserver
 ```
 
 **Backend will be available at:** `http://localhost:8000/`
@@ -146,16 +142,15 @@ The Django backend provides a **robust, scalable API** with:
 ### **API Endpoints**
 
 #### Public Endpoints
-- `GET /api/polls/` - List all published polls
-- `GET /api/polls/<id>/` - Get specific poll details
-- `POST /api/polls/<id>/vote/` - Submit a vote
+- `GET /polls/` - List all published polls
+- `GET /polls/<id>/` - Get specific poll details
+- `POST /polls/vote/` - Submit a vote
 
 #### Admin Endpoints
-- `GET /api/admin/polls/` - List all polls (admin view)
-- `POST /api/admin/polls/` - Create a new poll
-- `PUT /api/admin/polls/<id>/` - Update an existing poll
-- `DELETE /api/admin/polls/<id>/` - Delete a poll
-- `GET /api/admin/polls/<id>/results/` - Get detailed results
+- `GET /admin/` - Admin dashboard
+- `GET /admin/summary/` - Results summary
+- `POST /admin/create/` - Create a new poll
+- `GET /admin/questions/<id>/` - Get detailed poll results and management
 
 ## 🧪 Testing & Quality
 
@@ -170,9 +165,20 @@ npm test -- --coverage     # Coverage report
 ### **Backend Testing: Comprehensive Coverage**
 ```bash
 cd backend-django
-pytest                     # Run all tests
-pytest --cov=polls        # With coverage
-pytest --cov-report=html  # HTML coverage report
+
+# Install pytest-django first (if not already installed)
+uv sync
+
+# Run tests with pytest (Django-compatible)
+uv run pytest                     # Run all tests
+uv run pytest --cov=polls        # Run tests with coverage
+uv run pytest --cov-report=html  # Generate HTML coverage report
+
+# Alternative: Run tests with Django's built-in test runner
+uv run manage.py test      # Run all tests
+uv run coverage run --source=polls manage.py test  # Run tests with coverage
+uv run coverage report            # View coverage report
+uv run coverage html              # Generate HTML coverage report
 ```
 
 ### **Code Quality Tools**
@@ -185,57 +191,25 @@ pytest --cov-report=html  # HTML coverage report
 #### Backend
 - **Ruff**: Fast Python linter and formatter
 - **MyPy**: Static type checker
-- **Pyright**: Advanced type checking
+- **Pyright**: Advanced type checking (configured in pyproject.toml)
+- **Pylint**: Code analysis with Django plugin
 - **Bandit**: Security linting
 - **Safety**: Dependency vulnerability scanning
-
-## 🚀 Deployment
-
-### **Production Checklist**
-
-#### Frontend
-- Build optimization: `npm run build`
-- Environment variables configuration
-- CDN setup for static assets
-- HTTPS configuration
-
-#### Backend
-- Environment variables: `DEBUG=False`, production `SECRET_KEY`
-- Database: Production MySQL with connection pooling
-- Static files: `python manage.py collectstatic`
-- Security: HTTPS, secure headers, CORS configuration
-
-### **Docker Support**
-Both frontend and backend include Docker support for containerized deployment.
+- **Coverage**: Test coverage analysis
 
 ## 📚 Documentation
 
 ### **Project Documentation**
-- **`docs/README.md`**: Comprehensive project documentation index
+- **`README.md`**: This file: Comprehensive project documentation index
 - **`frontend-react/docs/`**: Frontend-specific documentation
 - **`backend-django/README.md`**: Backend-specific documentation
 
-### **Key Documentation Topics**
+### **Key Documentation Topics in `frontend-react/docs/`**
 - **Infinite Loop Resolution**: How we fixed DDoS-like API calls
 - **React Query Migration**: Migration from custom hooks to React Query
 - **Testing Infrastructure**: Professional-grade testing framework
 - **Component Optimization**: Performance improvements and best practices
 - **API Design**: RESTful API architecture and endpoints
-
-## 🤝 Contributing
-
-### **Development Workflow**
-1. **Fork the repository**
-2. **Create a feature branch**
-3. **Follow established patterns** from existing code
-4. **Run tests and quality checks**
-5. **Submit a pull request**
-
-### **Code Standards**
-- **Frontend**: Follow React best practices and established patterns
-- **Backend**: Follow PEP 8, use type hints, maintain test coverage
-- **Testing**: Maintain 100% test success rate
-- **Documentation**: Update relevant documentation for changes
 
 ## 🎉 Major Achievements
 
@@ -253,21 +227,6 @@ Both frontend and backend include Docker support for containerized deployment.
 - ✅ **API Design**: RESTful API with proper validation
 - ✅ **Production Ready**: Scalable and secure backend
 
-## 🔮 Future Enhancements
-
-### **Immediate Opportunities**
-- **E2E Testing**: Add Cypress or Playwright for end-to-end testing
-- **Performance Monitoring**: Implement performance metrics and monitoring
-- **Accessibility Testing**: Add automated accessibility testing
-- **CI/CD Pipeline**: Automated testing and deployment
-
-### **Long-term Vision**
-- **Microservices**: Potential migration to microservices architecture
-- **Real-time Features**: WebSocket support for live voting updates
-- **Mobile App**: React Native mobile application
-- **Analytics Dashboard**: Advanced analytics and reporting features
-- **Cache fixing**: Fix cache issues between admin and client.
-
 ## 📞 Support & Resources
 
 ### **Getting Help**
@@ -280,20 +239,4 @@ Both frontend and backend include Docker support for containerized deployment.
 - **Frontend Documentation**: `frontend-react/docs/README.md`
 - **Backend Documentation**: `backend-django/README.md`
 - **Test Examples**: Reference existing test files for patterns
-- **API Testing**: Use Postman collection in `backend-django/postman_tests/`
-
-## 🎯 Project Status
-
-**Overall Status: 100% Complete** 🎉
-
-- **Frontend (React)**: ✅ 100% Complete - Production ready
-- **Backend (Django)**: ✅ 100% Complete - Production ready
-- **Testing Infrastructure**: ✅ 100% Complete - Professional grade
-- **Documentation**: ✅ 100% Complete - Comprehensive coverage
-- **Performance**: ✅ 100% Complete - Optimized and stable
-
----
-
-**Built with ❤️ using React, Django, and modern development practices**
-
-*This project demonstrates enterprise-level full-stack development with comprehensive testing, performance optimization, and maintainable architecture.*
+- **API Testing**: ~~Use Postman collection in `backend-django/postman_tests/`~~ - Deprecated usage of Postman for this project.
