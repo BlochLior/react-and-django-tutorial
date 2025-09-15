@@ -3,6 +3,7 @@
 import React from 'react';
 import { screen } from '@testing-library/react';
 import { render } from '../../test-utils';
+import { createUserEvent } from '../../test-utils/test-helpers';
 import { TEST_SCENARIOS } from '../../test-utils/test-data';
 import ReviewPage from './ReviewPage';
 
@@ -77,13 +78,32 @@ describe('ReviewPage', () => {
 
   describe('User Interactions', () => {
     test('calls onSubmit when submit button is clicked', async () => {
+      const user = createUserEvent();
       const mockOnSubmit = jest.fn();
       renderReviewPage({ onSubmit: mockOnSubmit });
 
       const submitButton = screen.getByRole('button', { name: /submit all votes/i });
-      submitButton.click();
+      await user.click(submitButton);
 
       expect(mockOnSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    test('submit button is disabled when no questions are answered', () => {
+      renderReviewPage({
+        questions: TEST_SCENARIOS.MULTIPLE_QUESTIONS.questions,
+        selectedAnswers: {}, // No answers selected
+      });
+
+      const submitButton = screen.getByRole('button', { name: /submit all votes/i });
+      expect(submitButton).toBeDisabled();
+      expect(screen.getByText('Please answer at least one question before submitting')).toBeInTheDocument();
+    });
+
+    test('submit button is enabled when at least one question is answered', () => {
+      renderReviewPage();
+
+      const submitButton = screen.getByRole('button', { name: /submit all votes/i });
+      expect(submitButton).not.toBeDisabled();
     });
   });
 });

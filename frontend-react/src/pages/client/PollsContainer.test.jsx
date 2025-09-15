@@ -36,11 +36,10 @@ jest.mock('../../hooks/useMutation', () => {
 });
 
 // Mock child components to isolate the test
-jest.mock('../../components/client/QuestionList', () => () => (
+jest.mock('../../components/client/QuestionList', () => ({ onAnswerChange }) => (
   <div data-testid="question-list">
-    {/* Completely ignore onAnswerChange prop - never call it */}
-    <button>Select Answer 1</button>
-    <button>Select Answer 2</button>
+    <button onClick={() => onAnswerChange(1, 101)}>Select Answer 1</button>
+    <button onClick={() => onAnswerChange(2, 201)}>Select Answer 2</button>
   </div>
 ));
 
@@ -255,6 +254,6 @@ describe('PollsContainer - Unit Tests', () => {
 
     const reviewButton = screen.getByRole('button', { name: /Review Answers/i });
     expect(reviewButton).toBeEnabled();
-    expect(reviewButton).toHaveAttribute('title', 'Please answer at least one question to review');
+    expect(reviewButton).toHaveAttribute('title', 'Review your answers');
   });
 });

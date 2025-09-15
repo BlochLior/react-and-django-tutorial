@@ -1,6 +1,7 @@
 import React from 'react';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { render } from '../../test-utils';
+import { createUserEvent } from '../../test-utils/test-helpers';
 import Pagination from './Pagination';
 
 describe('Pagination', () => {
@@ -57,7 +58,8 @@ describe('Pagination', () => {
   });
 
   describe('User Interactions', () => {
-    test('calls onPageChange with correct page numbers when buttons are clicked', () => {
+    test('calls onPageChange with correct page numbers when buttons are clicked', async () => {
+      const user = createUserEvent();
       const mockOnPageChange = jest.fn();
       renderPagination({
         currentPage: 3,
@@ -68,15 +70,32 @@ describe('Pagination', () => {
       });
       
       // Click the 'Previous' button
-      fireEvent.click(screen.getByRole('button', { name: 'Previous page' }));
+      await user.click(screen.getByRole('button', { name: 'Previous page' }));
       expect(mockOnPageChange).toHaveBeenCalledWith(2);
       
       // Click the 'Next' button
-      fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+      await user.click(screen.getByRole('button', { name: 'Next page' }));
       expect(mockOnPageChange).toHaveBeenCalledWith(4);
     });
 
-    test('does not call onPageChange when disabled buttons are clicked', () => {
+    test('calls onPageChange when page number buttons are clicked', async () => {
+      const user = createUserEvent();
+      const mockOnPageChange = jest.fn();
+      renderPagination({
+        currentPage: 2,
+        totalPages: 5,
+        onPageChange: mockOnPageChange,
+        hasPrevious: true,
+        hasNext: true,
+      });
+      
+      // Click on page 4 button
+      await user.click(screen.getByRole('button', { name: '4' }));
+      expect(mockOnPageChange).toHaveBeenCalledWith(4);
+    });
+
+    test('does not call onPageChange when disabled buttons are clicked', async () => {
+      const user = createUserEvent();
       const mockOnPageChange = jest.fn();
       renderPagination({
         currentPage: 1,
@@ -85,7 +104,7 @@ describe('Pagination', () => {
         hasNext: true,
       });
       
-      fireEvent.click(screen.getByRole('button', { name: 'Previous page' }));
+      await user.click(screen.getByRole('button', { name: 'Previous page' }));
       expect(mockOnPageChange).not.toHaveBeenCalled();
     });
   });

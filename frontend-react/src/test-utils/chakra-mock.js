@@ -235,7 +235,7 @@ const createInputMock = () => {
 
 // Special handling for Button to ensure it handles 'as' prop and RouterLink properly
 const createButtonMock = () => {
-  const MockButton = React.forwardRef(({ children, as, to, leftIcon, colorScheme, variant, size, ...props }, ref) => {
+  const MockButton = React.forwardRef(({ children, as, to, leftIcon, colorScheme, variant, size, isDisabled, ...props }, ref) => {
     const validProps = filterValidProps(props);
     
     // Determine element type and role based on 'as' prop
@@ -252,6 +252,7 @@ const createButtonMock = () => {
       ref,
       'data-testid': 'chakra-button',
       role: role,
+      disabled: isDisabled, // Handle disabled state
       ...validProps
     };
     
