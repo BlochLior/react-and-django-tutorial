@@ -1,11 +1,17 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../../services/apiService';
-import { QueryChakraRouterWrapper } from '../../test-utils';
-import { createQuestions } from '../../test-utils/test-data';
-import { createMockPollsQuery } from '../../test-utils';
+import { 
+  screen, 
+  QueryChakraRouterWrapper,
+  createQuestions,
+  createFormData,
+  createMockPollsQuery,
+  createMockMutation,
+  createUserEvent,
+  waitForElement
+} from '../../test-utils';
+import { render } from '@testing-library/react';
 
 // Mock the API service to control responses
 jest.mock('../../services/apiService', () => ({
@@ -101,6 +107,7 @@ describe('Admin Pages Integration', () => {
   let mockUseQuery;
   let mockUseMutation;
   let mockNavigate;
+  let user;
   
   const mockQuestions = createQuestions(3);
   const mockQuestionsResponse = {
@@ -122,6 +129,9 @@ describe('Admin Pages Integration', () => {
     // Set up navigation mock
     mockNavigate = jest.fn();
     useNavigate.mockReturnValue(mockNavigate);
+    
+    // Set up user event
+    user = createUserEvent();
     
     // Reset all mocks
     mockUseQuery.mockReset();
@@ -146,17 +156,11 @@ describe('Admin Pages Integration', () => {
   describe('AdminDashboard - Core Functionality', () => {
     test('renders dashboard with questions and pagination', async () => {
       // Mock successful questions query with onSuccess callback
-      mockUseQuery.mockImplementation((queryFn, deps, options) => {
-        // Simulate the onSuccess callback being called
-        if (options?.onSuccess) {
-          setTimeout(() => options.onSuccess(mockQuestionsResponse), 0);
-        }
-        return {
-          data: mockQuestionsResponse,
-          loading: false,
-          error: null
-        };
-      });
+      const onSuccessCallback = jest.fn();
+      mockUseQuery.mockReturnValue(createMockPollsQuery(
+        { data: mockQuestionsResponse },
+        onSuccessCallback
+      ));
 
       render(
         <QueryChakraRouterWrapper>
@@ -176,9 +180,7 @@ describe('Admin Pages Integration', () => {
       expect(screen.getByText('Admin Dashboard')).toBeInTheDocument();
       
       // Wait for stats to be populated by onSuccess callback
-      await waitFor(() => {
-        expect(screen.getByText('Total Questions: 3')).toBeInTheDocument();
-      });
+      await waitForElement('Total Questions: 3');
       
       expect(screen.getByTestId('admin-question-list')).toBeInTheDocument();
       expect(screen.getByTestId('pagination')).toBeInTheDocument();
@@ -194,16 +196,11 @@ describe('Admin Pages Integration', () => {
       };
 
       // Mock paginated response with onSuccess callback
-      mockUseQuery.mockImplementation((queryFn, deps, options) => {
-        if (options?.onSuccess) {
-          setTimeout(() => options.onSuccess(paginatedResponse), 0);
-        }
-        return {
-          data: paginatedResponse,
-          loading: false,
-          error: null
-        };
-      });
+      const onSuccessCallback = jest.fn();
+      mockUseQuery.mockReturnValue(createMockPollsQuery(
+        { data: paginatedResponse },
+        onSuccessCallback
+      ));
 
       render(
         <QueryChakraRouterWrapper>
@@ -224,11 +221,11 @@ describe('Admin Pages Integration', () => {
 
     test('shows loading and error states correctly', async () => {
       // Test loading state
-      mockUseQuery.mockReturnValue({
+      mockUseQuery.mockReturnValue(createMockPollsQuery({
         data: null,
         loading: true,
         error: null
-      });
+      }));
 
       const { rerender } = render(
         <QueryChakraRouterWrapper>
@@ -240,11 +237,11 @@ describe('Admin Pages Integration', () => {
       expect(screen.getByText('Loading questions...')).toBeInTheDocument();
 
       // Test error state
-      mockUseQuery.mockReturnValue({
+      mockUseQuery.mockReturnValue(createMockPollsQuery({
         data: null,
         loading: false,
         error: 'Failed to fetch questions'
-      });
+      }));
 
       rerender(
         <QueryChakraRouterWrapper>
@@ -259,20 +256,15 @@ describe('Admin Pages Integration', () => {
 
   describe('NewQuestion - Form Submission Flow', () => {
     test('submits new question successfully and navigates back', async () => {
-      const user = userEvent.setup();
-      
       // Mock successful mutation
-      const mockMutate = jest.fn().mockResolvedValue({ success: true });
-      mockUseMutation.mockReturnValue([
-        mockMutate,
-        { data: null, loading: false, error: null }
-      ]);
+      const [mockMutate, mutationState] = createMockMutation();
+      mockUseMutation.mockReturnValue([mockMutate, mutationState]);
 
       render(
         <QueryChakraRouterWrapper>
           <div data-testid="question-form">
             <h2>Create New Question</h2>
-            <form onSubmit={(e) => { e.preventDefault(); mockMutate({ question_text: 'Test Question', choices: [] }); }}>
+            <form onSubmit={(e) => { e.preventDefault(); mockMutate(createFormData()); }}>
               <input data-testid="question-text" defaultValue="" />
               <button type="submit" data-testid="submit-button">Submit Question</button>
             </form>
@@ -280,26 +272,26 @@ describe('Admin Pages Integration', () => {
         </QueryChakraRouterWrapper>
       );
 
-      // Fill and submit form
+      // Fill form manually since mock doesn't have proper labels
       const questionInput = screen.getByTestId('question-text');
-      await user.type(questionInput, 'Test Question');
+      await user.type(questionInput, 'New Test Question');
       
+      // Submit form
       const submitButton = screen.getByTestId('submit-button');
       await user.click(submitButton);
 
       // Verify mutation was called
-      expect(mockMutate).toHaveBeenCalledWith({
-        question_text: 'Test Question',
-        choices: []
-      });
+      expect(mockMutate).toHaveBeenCalledWith(createFormData());
     });
 
     test('handles form submission errors gracefully', async () => {
       // Mock mutation with error
-      mockUseMutation.mockReturnValue([
-        jest.fn(), // mutate function (won't be called in this test)
-        { data: null, loading: false, error: 'Failed to create question' }
-      ]);
+      const [mockMutate, mutationState] = createMockMutation({
+        data: null,
+        loading: false,
+        error: 'Failed to create question'
+      });
+      mockUseMutation.mockReturnValue([mockMutate, mutationState]);
 
       render(
         <QueryChakraRouterWrapper>
@@ -318,24 +310,21 @@ describe('Admin Pages Integration', () => {
       const mockQuestion = createQuestions(1)[0];
       
       // Mock successful question query
-      mockUseQuery.mockReturnValue({
+      mockUseQuery.mockReturnValue(createMockPollsQuery({
         data: mockQuestion,
         loading: false,
         error: null
-      });
+      }));
 
       // Mock successful update mutation
-      const mockMutate = jest.fn().mockResolvedValue({ success: true });
-      mockUseMutation.mockReturnValue([
-        mockMutate,
-        { data: null, loading: false, error: null }
-      ]);
+      const [mockMutate, mutationState] = createMockMutation();
+      mockUseMutation.mockReturnValue([mockMutate, mutationState]);
 
       render(
         <QueryChakraRouterWrapper>
           <div data-testid="question-form">
             <h2>Edit Question</h2>
-            <form onSubmit={(e) => { e.preventDefault(); mockMutate({ question_text: 'Updated Question', choices: [] }); }}>
+            <form onSubmit={(e) => { e.preventDefault(); mockMutate(createFormData({ question_text: 'Updated Question' })); }}>
               <input data-testid="question-text" defaultValue={mockQuestion.question_text} />
               <button type="submit" data-testid="submit-button">Save Changes</button>
             </form>
@@ -347,28 +336,26 @@ describe('Admin Pages Integration', () => {
       expect(screen.getByDisplayValue('Question 1')).toBeInTheDocument();
       expect(screen.getByText('Edit Question')).toBeInTheDocument();
 
-      // Edit and submit
+      // Edit form manually since mock doesn't have proper labels
       const questionInput = screen.getByTestId('question-text');
-      await userEvent.clear(questionInput);
-      await userEvent.type(questionInput, 'Updated Question');
+      await user.clear(questionInput);
+      await user.type(questionInput, 'Updated Question');
       
+      // Submit form
       const submitButton = screen.getByTestId('submit-button');
-      await userEvent.click(submitButton);
+      await user.click(submitButton);
 
       // Verify mutation was called with updated data
-      expect(mockMutate).toHaveBeenCalledWith({
-        question_text: 'Updated Question',
-        choices: []
-      });
+      expect(mockMutate).toHaveBeenCalledWith(createFormData({ question_text: 'Updated Question' }));
     });
 
     test('shows loading and error states during edit flow', async () => {
       // Test loading state
-      mockUseQuery.mockReturnValue({
+      mockUseQuery.mockReturnValue(createMockPollsQuery({
         data: null,
         loading: true,
         error: null
-      });
+      }));
 
       const { rerender } = render(
         <QueryChakraRouterWrapper>
@@ -380,11 +367,11 @@ describe('Admin Pages Integration', () => {
       expect(screen.getByText('Loading question details...')).toBeInTheDocument();
 
       // Test error state
-      mockUseQuery.mockReturnValue({
+      mockUseQuery.mockReturnValue(createMockPollsQuery({
         data: null,
         loading: false,
         error: 'Failed to fetch question details'
-      });
+      }));
 
       rerender(
         <QueryChakraRouterWrapper>
@@ -400,16 +387,11 @@ describe('Admin Pages Integration', () => {
   describe('Cross-Component Navigation and State', () => {
     test('navigation between admin pages works correctly', async () => {
       // Mock successful dashboard query
-      mockUseQuery.mockImplementation((queryFn, deps, options) => {
-        if (options?.onSuccess) {
-          setTimeout(() => options.onSuccess(mockQuestionsResponse), 0);
-        }
-        return {
-          data: mockQuestionsResponse,
-          loading: false,
-          error: null
-        };
-      });
+      const onSuccessCallback = jest.fn();
+      mockUseQuery.mockReturnValue(createMockPollsQuery(
+        { data: mockQuestionsResponse },
+        onSuccessCallback
+      ));
 
       render(
         <QueryChakraRouterWrapper>
@@ -435,16 +417,11 @@ describe('Admin Pages Integration', () => {
 
     test('question count updates correctly after operations', async () => {
       // Mock initial dashboard query
-      mockUseQuery.mockImplementation((queryFn, deps, options) => {
-        if (options?.onSuccess) {
-          setTimeout(() => options.onSuccess(mockQuestionsResponse), 0);
-        }
-        return {
-          data: mockQuestionsResponse,
-          loading: false,
-          error: null
-        };
-      });
+      const onSuccessCallback = jest.fn();
+      mockUseQuery.mockReturnValue(createMockPollsQuery(
+        { data: mockQuestionsResponse },
+        onSuccessCallback
+      ));
 
       render(
         <QueryChakraRouterWrapper>
@@ -454,10 +431,8 @@ describe('Admin Pages Integration', () => {
         </QueryChakraRouterWrapper>
       );
 
-      // Wait for stats to be populated
-      await waitFor(() => {
-        expect(screen.getByText('Total Questions: 3')).toBeInTheDocument();
-      });
+      // Wait for stats to be populated using centralized helper
+      await waitForElement('Total Questions: 3');
 
       // Verify the count is displayed correctly
       expect(screen.getByTestId('total-questions')).toBeInTheDocument();
