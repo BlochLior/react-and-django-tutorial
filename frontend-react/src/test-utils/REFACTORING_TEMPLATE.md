@@ -1,6 +1,6 @@
 # Test Refactoring Template
 
-I want to refactor my test file: `[FILE_PATH]` to maximize usage of centralized test utilities from the `test-utils/` directory.
+This template provides a systematic approach to refactor test files to maximize usage of centralized test utilities from the src/test-utils/ directory.
 
 ## Refactoring Goals
 1. Replace hardcoded data with test data factories and TEST_SCENARIOS
@@ -8,12 +8,13 @@ I want to refactor my test file: `[FILE_PATH]` to maximize usage of centralized 
 3. Create custom assertion helpers for component-specific patterns
 4. Focus on testing custom features rather than library functionality
 5. Add proper test isolation and edge case coverage
+6. Remove redundant code and improve maintainability
 
 ## Available Test-Utils
-- **test-data.js**: `createQuestion`, `createQuestions`, `createFormData`, `TEST_SCENARIOS`, `createMutationData`, `createMutationVariables`
-- **test-helpers.js**: `fillForm`, `submitForm`, `addChoices`, `createUserEvent`, `assertFormElements`, `assertEditFormElements`, `waitForElement`, `assertPaginationElements`, `assertAdminQuestionListElements`, `assertQuestionCardElements`, `assertQuestionListElements`, `waitForUseMutationReady`, `assertUseQuerySuccessState`, `assertUseQueryErrorState`, `assertTextContent`
-- **mocks.js**: `createMockPollsQuery`, `createMockAllPollsQuery`, `createMockMutation`, `createMockQueryFn`, `setupCommonMocks`
-- **index.js**: `render`, `QueryWrapper`, `QueryRouterWrapper`, `QueryChakraRouterWrapper`, `cleanup`
+- **test-data.js**: `createQuestion`, `createQuestions`, `createFormData`, `TEST_SCENARIOS`, `createMutationData`, `createMutationVariables`, `createChoice`, `createSelectedAnswers`
+- **test-helpers.js**: `fillForm`, `submitForm`, `addChoices`, `createUserEvent`, `assertFormElements`, `assertEditFormElements`, `waitForElement`, `assertPaginationElements`, `assertPaginationNavigationStates`, `assertPaginationPageNumbers`, `assertPaginationInteractions`, `assertPaginationPageClick`, `assertAdminQuestionListElements`, `assertQuestionCardElements`, `assertQuestionListElements`, `waitForUseMutationReady`, `assertUseQuerySuccessState`, `assertUseQueryErrorState`, `assertTextContent`
+- **mocks.js**: `createMockPollsQuery`, `createMockAllPollsQuery`, `createMockMutation`, `createMockQueryFn`, `createMockQueryFnWithSequence`, `createMockQueryFnWithErrorSequence`, `mockLocalStorage`, `mockSessionStorage`, `resetMocks`, `setupCommonMocks`
+- **index.js**: `render`, `renderWithProviders`, `renderWithRouter`, `QueryWrapper`, `QueryRouterWrapper`, `QueryChakraRouterWrapper`, `createTestQueryClient`, `cleanup`
 
 ## Key Refactoring Strategies
 
@@ -21,22 +22,26 @@ I want to refactor my test file: `[FILE_PATH]` to maximize usage of centralized 
 - Import all utilities from centralized `index.js` in a single import statement
 - Include `cleanup` for proper test isolation
 - Check usage with grep before importing to avoid unused imports
+- Remove unused imports after refactoring (e.g., `screen` if using assertion helpers)
 
 ### 2. Mock Data Strategy
 - Use `TEST_SCENARIOS` for consistent test data across multiple tests
 - Create component-specific test scenarios in `test-data.js`
 - Use factory functions with overrides for test-specific data needs
+- Include mock functions in test scenarios (e.g., `onPageChange: jest.fn()`)
 
 ### 3. Test Structure
 - Group tests by custom features: "Default Rendering", "Custom [Feature]", "Edge Cases", "Boundary Conditions"
 - Use `beforeEach(() => cleanup())` for proper test isolation
 - Focus on testable behaviors rather than implementation details
+- Use descriptive test names that explain the behavior being tested
 
 ### 4. Component-Specific Assertion Helpers
 - Create helpers in `test-helpers.js` following pattern: `assert[ComponentName][Behavior]()`
 - Use centralized `assertTextContent()` for text content with whitespace handling
-- Document with JSDoc comments
+- Document with JSDoc comments including parameter descriptions
 - Include both positive and negative assertions
+- Group related assertions into single helper functions for better maintainability
 
 ### 5. Common Pitfalls to Avoid
 - Don't manually call `setupCommonMocks()` or `resetMocks()` - handled globally
@@ -44,6 +49,8 @@ I want to refactor my test file: `[FILE_PATH]` to maximize usage of centralized 
 - Don't test library functionality - focus on custom features
 - Use `data-testid` for reliable element selection
 - Leverage existing utilities like `assertTextContent()` for whitespace handling
+- Don't import `screen` if using centralized assertion helpers
+- Ensure mock functions are properly reset between tests
 
 ## Refactoring Process
 1. Analyze current test file and identify custom features to test
@@ -55,56 +62,113 @@ I want to refactor my test file: `[FILE_PATH]` to maximize usage of centralized 
 7. Add edge case testing and proper test isolation
 8. Validate by running tests and checking for linting errors
 9. Remove unused imports and helper functions
+10. Update template with lessons learned from each refactoring
+
+## Component-Specific Guidelines
+
+### For UI Components (like Pagination, LoadingState, ErrorState)
+- Focus on rendering states, user interactions, and edge cases
+- Create assertion helpers for component-specific behaviors
+- Test custom logic (e.g., smart pagination, conditional rendering)
+- Use `TEST_SCENARIOS` for different component states
+
+### For Page Components (like AdminDashboard)
+- Focus on data loading states, error handling, and conditional rendering
+- Mock external dependencies (hooks, child components)
+- Test integration between components and data flow
+- Use existing `assertUseQuerySuccessState`, `assertUseQueryErrorState` helpers
+
+### For Hook Components
+- Focus on hook behavior, state changes, and side effects
+- Mock external dependencies and API calls
+- Test error handling and edge cases
+- Use existing mutation and query assertion helpers
 
 ## Example Refactored Test Structure
+
+### UI Component Example (Pagination)
 ```javascript
 import React from 'react';
 import { 
   render, 
-  screen, 
   cleanup,
   TEST_SCENARIOS,
-  assertComponentElements,
-  assertComponentCustomProps,
-  assertTextContent
+  assertPaginationElements,
+  assertPaginationNavigationStates,
+  assertPaginationInteractions
 } from '../../test-utils';
-import ComponentName from './ComponentName';
+import Pagination from './Pagination';
 
-describe('ComponentName', () => {
+describe('Pagination', () => {
   beforeEach(() => {
     cleanup();
   });
 
-  const renderComponent = (props = {}) => {
-    return render(<ComponentName {...props} />);
+  const renderPagination = (props = {}) => {
+    return render(<Pagination {...props} />);
   };
 
   describe('Default Rendering', () => {
     test('renders with default configuration', () => {
-      renderComponent();
-      assertComponentElements(TEST_SCENARIOS.COMPONENT_DEFAULT.message);
+      const scenario = TEST_SCENARIOS.PAGINATION_DEFAULT;
+      renderPagination(scenario);
+      
+      assertPaginationElements(scenario.currentPage, scenario.totalPages);
+      assertPaginationNavigationStates(scenario.hasPrevious, scenario.hasNext);
     });
   });
 
-  describe('Custom Features', () => {
-    test('handles custom props', () => {
-      const scenario = TEST_SCENARIOS.COMPONENT_CUSTOM;
-      renderComponent(scenario);
-      assertComponentCustomProps(scenario.message, scenario.otherProp);
+  describe('User Interactions', () => {
+    test('calls onPageChange with correct page numbers', async () => {
+      const scenario = TEST_SCENARIOS.PAGINATION_MIDDLE_PAGE;
+      renderPagination(scenario);
+      
+      await assertPaginationInteractions(
+        scenario.onPageChange, 
+        scenario.currentPage, 
+        scenario.hasPrevious, 
+        scenario.hasNext
+      );
     });
   });
+});
+```
 
-  describe('Edge Cases', () => {
-    test('handles whitespace-only content', () => {
-      renderComponent({ message: '   ' });
-      assertTextContent('   ', 'chakra-text');
-    });
+### Page Component Example (AdminDashboard)
+```javascript
+import React from 'react';
+import { 
+  render, 
+  cleanup,
+  TEST_SCENARIOS,
+  assertUseQuerySuccessState,
+  assertUseQueryErrorState,
+  createQuestions
+} from '../../test-utils';
+import AdminDashboard from './AdminDashboard';
+
+describe('AdminDashboard', () => {
+  beforeEach(() => {
+    cleanup();
   });
 
-  describe('Boundary Conditions', () => {
-    test('handles extreme values', () => {
-      renderComponent({ value: 'extreme' });
-      // Test boundary behavior
+  const renderAdminDashboard = () => {
+    return render(<AdminDashboard />);
+  };
+
+  describe('Data Loading States', () => {
+    test('renders loading state initially', () => {
+      // Mock useQuery to return loading state
+      renderAdminDashboard();
+      expect(screen.getByText('Loading questions...')).toBeInTheDocument();
+    });
+
+    test('renders questions after successful API fetch', () => {
+      const mockQuestions = createQuestions(2);
+      // Mock useQuery to return success state
+      renderAdminDashboard();
+      
+      assertUseQuerySuccessState(mockQuestions);
     });
   });
 });

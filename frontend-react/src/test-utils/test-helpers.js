@@ -192,8 +192,93 @@ export const assertEditFormElements = () => {
  */
 export const assertPaginationElements = (currentPage, totalPages) => {
   expect(screen.getByText(`Page ${currentPage} of ${totalPages}`)).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Previous' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Previous page' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument();
+};
+
+/**
+ * Assert pagination navigation button states
+ * @param {boolean} hasPrevious - Whether previous button should be enabled
+ * @param {boolean} hasNext - Whether next button should be enabled
+ */
+export const assertPaginationNavigationStates = (hasPrevious, hasNext) => {
+  const prevButton = screen.getByRole('button', { name: 'Previous page' });
+  const nextButton = screen.getByRole('button', { name: 'Next page' });
+  
+  if (hasPrevious) {
+    expect(prevButton).toBeEnabled();
+  } else {
+    expect(prevButton).toBeDisabled();
+  }
+  
+  if (hasNext) {
+    expect(nextButton).toBeEnabled();
+  } else {
+    expect(nextButton).toBeDisabled();
+  }
+};
+
+/**
+ * Assert pagination page number buttons are rendered correctly
+ * @param {number} currentPage - The current active page
+ * @param {number} totalPages - Total number of pages
+ */
+export const assertPaginationPageNumbers = (currentPage, totalPages) => {
+  // Check that current page button has correct styling (solid variant)
+  const currentPageButton = screen.getByRole('button', { name: currentPage.toString() });
+  expect(currentPageButton).toBeInTheDocument();
+  
+  // For small page counts, all page numbers should be visible
+  if (totalPages <= 5) {
+    for (let i = 1; i <= totalPages; i++) {
+      const pageButton = screen.getByRole('button', { name: i.toString() });
+      expect(pageButton).toBeInTheDocument();
+    }
+  }
+};
+
+/**
+ * Assert pagination handles user interactions correctly
+ * @param {Function} onPageChange - Mock function for page change callback
+ * @param {number} currentPage - Current page number
+ * @param {boolean} hasPrevious - Whether previous navigation is available
+ * @param {boolean} hasNext - Whether next navigation is available
+ */
+export const assertPaginationInteractions = async (onPageChange, currentPage, hasPrevious, hasNext) => {
+  const user = createUserEvent();
+  
+  // Test previous button interaction
+  if (hasPrevious) {
+    await user.click(screen.getByRole('button', { name: 'Previous page' }));
+    expect(onPageChange).toHaveBeenCalledWith(currentPage - 1);
+  } else {
+    await user.click(screen.getByRole('button', { name: 'Previous page' }));
+    expect(onPageChange).not.toHaveBeenCalled();
+  }
+  
+  // Reset mock for next test
+  onPageChange.mockClear();
+  
+  // Test next button interaction
+  if (hasNext) {
+    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(onPageChange).toHaveBeenCalledWith(currentPage + 1);
+  } else {
+    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(onPageChange).not.toHaveBeenCalled();
+  }
+};
+
+/**
+ * Assert pagination page number button interactions
+ * @param {Function} onPageChange - Mock function for page change callback
+ * @param {number} targetPage - Page number to click on
+ */
+export const assertPaginationPageClick = async (onPageChange, targetPage) => {
+  const user = createUserEvent();
+  
+  await user.click(screen.getByRole('button', { name: targetPage.toString() }));
+  expect(onPageChange).toHaveBeenCalledWith(targetPage);
 };
 
 /**
