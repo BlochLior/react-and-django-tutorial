@@ -323,5 +323,17 @@ export const assertQuestionListDataStates = () => {
   expect(screen.getByText('No polls available at the moment.')).toBeInTheDocument();
 };
 
+/**
+ * Wait for useMutation hook to be ready
+ */
+export const waitForUseMutationReady = async (result) => {
+  await waitFor(() => {
+    expect(result.current).toBeDefined();
+  });
+  await waitFor(() => {
+    expect(Array.isArray(result.current)).toBe(true);
+  });
+};
+
 // Note: Mock query functions have been moved to mocks.js for better separation of concerns
 // Import them from './mocks' if needed in your tests

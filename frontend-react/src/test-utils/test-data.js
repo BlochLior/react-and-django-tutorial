@@ -49,6 +49,24 @@ export const createFormData = (overrides = {}) => ({
   ...overrides,
 });
 
+// Mutation test data factories
+export const createMutationData = (overrides = {}) => ({
+  id: 1,
+  name: 'Test',
+  success: true,
+  ...overrides,
+});
+
+export const createMutationError = (overrides = {}) => ({
+  message: 'Network Error',
+  ...overrides,
+});
+
+export const createMutationVariables = (overrides = {}) => ({
+  name: 'Test',
+  ...overrides,
+});
+
 // Common test scenarios
 export const TEST_SCENARIOS = {
   SINGLE_QUESTION: {
@@ -66,5 +84,17 @@ export const TEST_SCENARIOS = {
   EMPTY_CHOICES: {
     questions: [createQuestion({ choices: [] })],
     selectedAnswers: {},
+  },
+  MUTATION_SUCCESS: {
+    data: createMutationData(),
+    variables: createMutationVariables(),
+  },
+  MUTATION_ERROR: {
+    error: createMutationError(),
+    variables: createMutationVariables(),
+  },
+  MUTATION_LOADING: {
+    loading: true,
+    variables: createMutationVariables(),
   },
 };

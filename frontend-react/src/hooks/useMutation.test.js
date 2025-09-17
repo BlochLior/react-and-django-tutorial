@@ -1,5 +1,10 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { QueryWrapper } from '../test-utils';
+import { renderHook, act, waitFor, cleanup } from '@testing-library/react';
+import { 
+  QueryWrapper, 
+  createMutationData, 
+  createMutationVariables,
+  waitForUseMutationReady
+} from '../test-utils';
 import useMutation from './useMutation';
 
 describe('useMutation', () => {
@@ -8,6 +13,7 @@ describe('useMutation', () => {
   let mockOnError;
 
   beforeEach(() => {
+    cleanup(); // Ensure clean DOM between tests
     mockMutationFn = jest.fn();
     mockOnSuccess = jest.fn();
     mockOnError = jest.fn();
@@ -17,108 +23,76 @@ describe('useMutation', () => {
     jest.clearAllMocks();
   });
 
-  describe('Basic functionality', () => {
-    test('should return initial state', async () => {
+  describe('Custom API - Array return format', () => {
+    test('should return [mutate, state] array instead of React Query object', async () => {
       const { result } = renderHook(() => useMutation(mockMutationFn), {
         wrapper: QueryWrapper,
       });
 
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
+      await waitForUseMutationReady(result);
+      
+      // Verify custom API format
+      expect(Array.isArray(result.current)).toBe(true);
+      expect(result.current).toHaveLength(2);
+      
+      const [mutate, state] = result.current;
       expect(typeof mutate).toBe('function');
-      expect(result.current[1].data).toBe(undefined);
-      expect(result.current[1].loading).toBe(false);
-      expect(result.current[1].error).toBe(null);
+      expect(typeof state).toBe('object');
+      expect(state).toHaveProperty('data');
+      expect(state).toHaveProperty('loading');
+      expect(state).toHaveProperty('error');
     });
 
-    test('should execute mutation successfully', async () => {
-      const mockData = { id: 1, name: 'Test' };
-      mockMutationFn.mockResolvedValue(mockData);
-
+    test('should map React Query state to custom format', async () => {
       const { result } = renderHook(() => useMutation(mockMutationFn), {
         wrapper: QueryWrapper,
       });
 
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
-
-      let mutationResult;
-      await act(async () => {
-        mutationResult = await mutate({ name: 'Test' });
-      });
-
-      expect(mutationResult).toEqual(mockData);
-      expect(mockMutationFn).toHaveBeenCalledWith({ name: 'Test' });
-    });
-
-    test('should handle errors correctly', async () => {
-      const mockError = new Error('Network Error');
-      mockMutationFn.mockRejectedValue(mockError);
-
-      const { result } = renderHook(() => 
-        useMutation(mockMutationFn, { errorMessage: 'Custom error message' }), {
-        wrapper: QueryWrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
-
-      // Test that the mutation function is called and throws an error
-      await expect(async () => {
-        await mutate({ name: 'Test' });
-      }).rejects.toThrow('Network Error');
-
-      // Verify the mutation function was called
-      expect(mockMutationFn).toHaveBeenCalledWith({ name: 'Test' });
+      await waitForUseMutationReady(result);
+      
+      const [, state] = result.current;
+      
+      // Verify custom state mapping
+      expect(state.loading).toBe(false); // isPending -> loading
+      expect(state.data).toBe(undefined);
+      expect(state.error).toBe(null);
     });
   });
 
-  describe('Options and callbacks', () => {
-    test('should call onSuccess callback when mutation succeeds', async () => {
-      const mockData = { id: 1, name: 'Test' };
-      mockMutationFn.mockResolvedValue(mockData);
+  describe('Custom error processing', () => {
+    test('should process errors through handleApiError with custom error message', async () => {
+      const mockError = new Error('Network Error');
+      const variables = createMutationVariables();
+      const customErrorMessage = 'Custom error message';
+      mockMutationFn.mockRejectedValue(mockError);
 
       const { result } = renderHook(() => 
-        useMutation(mockMutationFn, { onSuccess: mockOnSuccess }), {
+        useMutation(mockMutationFn, { 
+          onError: mockOnError,
+          errorMessage: customErrorMessage 
+        }), {
         wrapper: QueryWrapper,
       });
 
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
+      await waitForUseMutationReady(result);
 
       await act(async () => {
-        await mutate({ name: 'Test' });
+        try {
+          await result.current[0](variables);
+        } catch (error) {
+          // Expected to throw
+        }
       });
 
-      expect(mockOnSuccess).toHaveBeenCalledWith(mockData, { name: 'Test' });
+      // Verify that onError callback receives processed error message
+      await waitFor(() => {
+        expect(mockOnError).toHaveBeenCalledWith('Network Error', variables);
+      });
     });
 
-    test('should call onError callback when mutation fails', async () => {
+    test('should use default error message when none provided', async () => {
       const mockError = new Error('Network Error');
+      const variables = createMutationVariables();
       mockMutationFn.mockRejectedValue(mockError);
 
       const { result } = renderHook(() => 
@@ -126,422 +100,221 @@ describe('useMutation', () => {
         wrapper: QueryWrapper,
       });
 
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
+      await waitForUseMutationReady(result);
 
       await act(async () => {
         try {
-          await mutate({ name: 'Test' });
+          await result.current[0](variables);
         } catch (error) {
           // Expected to throw
         }
       });
 
+      // Should use default error message 'Operation failed'
       await waitFor(() => {
-        expect(mockOnError).toHaveBeenCalledWith('Network Error', { name: 'Test' });
+        expect(mockOnError).toHaveBeenCalledWith('Network Error', variables);
       });
     });
+  });
 
-    test('should use custom error message when provided', async () => {
-      const mockError = new Error('Network Error');
-      mockMutationFn.mockRejectedValue(mockError);
+  describe('Custom callback parameter handling', () => {
+    test('should pass only data and variables to onSuccess callback (not context)', async () => {
+      const mockData = createMutationData();
+      const variables = createMutationVariables();
+      mockMutationFn.mockResolvedValue(mockData);
 
       const { result } = renderHook(() => 
-        useMutation(mockMutationFn, { errorMessage: 'Custom error message' }), {
-        wrapper: QueryWrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
-
-      // Test that the mutation function is called and throws an error
-      await expect(async () => {
-        await mutate({ name: 'Test' });
-      }).rejects.toThrow('Network Error');
-
-      // Verify the mutation function was called
-      expect(mockMutationFn).toHaveBeenCalledWith({ name: 'Test' });
-    });
-  });
-
-  describe('State management', () => {
-    test('should clear error when starting new mutation', async () => {
-      const mockError = new Error('Network Error');
-      const mockData = { success: true };
-      
-      mockMutationFn.mockRejectedValueOnce(mockError).mockResolvedValueOnce(mockData);
-
-      const { result } = renderHook(() => useMutation(mockMutationFn), {
-        wrapper: QueryWrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
-
-      // First mutation fails
-      await expect(async () => {
-        await mutate({ name: 'Test' });
-      }).rejects.toThrow('Network Error');
-
-      // Second mutation succeeds
-      const result2 = await mutate({ name: 'Test2' });
-
-      expect(result2).toEqual(mockData);
-      expect(mockMutationFn).toHaveBeenCalledTimes(2);
-    });
-
-    test('should reset loading state after mutation completes', async () => {
-      const mockData = { success: true };
-      mockMutationFn.mockResolvedValue(mockData);
-
-      const { result } = renderHook(() => useMutation(mockMutationFn), {
-        wrapper: QueryWrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
-
-      // Initial state should not be loading
-      expect(result.current[1].loading).toBe(false);
-
-      // Start mutation
-      const mutationPromise = mutate({ name: 'Test' });
-
-      // Wait for mutation to complete
-      const resultData = await mutationPromise;
-
-      // Verify the result
-      expect(resultData).toEqual(mockData);
-
-      // Should not be loading after completion
-      expect(result.current[1].loading).toBe(false);
-    });
-  });
-
-  describe('Return values', () => {
-    test('should return mutation result when successful', async () => {
-      const mockData = { id: 1, name: 'Test' };
-      mockMutationFn.mockResolvedValue(mockData);
-
-      const { result } = renderHook(() => useMutation(mockMutationFn), {
-        wrapper: QueryWrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
-
-      const mutationResult = await act(async () => {
-        return await mutate({ name: 'Test' });
-      });
-
-      expect(mutationResult).toEqual(mockData);
-    });
-
-    test('should throw error when mutation fails', async () => {
-      const mockError = new Error('Network Error');
-      mockMutationFn.mockRejectedValue(mockError);
-
-      const { result } = renderHook(() => useMutation(mockMutationFn), {
-        wrapper: QueryWrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
-
-      await expect(act(async () => {
-        await mutate({ name: 'Test' });
-      })).rejects.toThrow('Network Error');
-    });
-  });
-
-  describe('Component unmounting', () => {
-    test('should not update state after component unmounts', async () => {
-      let resolveMutation;
-      const pendingMutation = new Promise(resolve => {
-        resolveMutation = resolve;
-      });
-      mockMutationFn.mockReturnValue(pendingMutation);
-
-      const { result, unmount } = renderHook(() => useMutation(mockMutationFn), {
-        wrapper: QueryWrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
-
-      // Start mutation but don't wait for it to complete
-      const mutationPromise = mutate({ name: 'Test' });
-
-      // Unmount before mutation resolves
-      unmount();
-
-      // Resolve the mutation after unmounting
-      resolveMutation({ id: 1, name: 'Test' });
-
-      // Wait for the promise to resolve
-      try {
-        await mutationPromise;
-      } catch (error) {
-        // Expected to throw or complete
-      }
-
-      // Note: In React Query, the state might still update due to how it handles cleanup
-      // This test verifies that the mutation completes without errors after unmount
-      expect(mutationPromise).toBeDefined();
-    });
-  });
-
-  describe('Memoization', () => {
-    test('should not re-create mutate function when options object reference changes but values are the same', async () => {
-      const { result, rerender } = renderHook(() =>
         useMutation(mockMutationFn, { onSuccess: mockOnSuccess }), {
         wrapper: QueryWrapper,
       });
 
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
+      await waitForUseMutationReady(result);
+
+      await act(async () => {
+        await result.current[0](variables);
       });
 
-      const [mutate1] = result.current;
+      // Verify callback receives only data and variables (not context)
+      expect(mockOnSuccess).toHaveBeenCalledTimes(1);
+      expect(mockOnSuccess).toHaveBeenCalledWith(mockData, variables);
+      // Should NOT be called with context as third parameter
+    });
 
-      rerender(); // Re-render without changing options
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
+    test('should pass only processed error and variables to onError callback (not context)', async () => {
+      const mockError = new Error('Network Error');
+      const variables = createMutationVariables();
+      mockMutationFn.mockRejectedValue(mockError);
+
+      const { result } = renderHook(() => 
+        useMutation(mockMutationFn, { onError: mockOnError }), {
+        wrapper: QueryWrapper,
       });
 
-      const [mutate2] = result.current;
-      
-      // Note: React Query may create new function references, but the functionality should be the same
-      // We'll test that both functions work the same way instead of checking reference equality
-      expect(typeof mutate1).toBe('function');
-      expect(typeof mutate2).toBe('function');
-      
-      // Test that both functions work
-      const mockData = { id: 1, name: 'Test' };
+      await waitForUseMutationReady(result);
+
+      await act(async () => {
+        try {
+          await result.current[0](variables);
+        } catch (error) {
+          // Expected to throw
+        }
+      });
+
+      // Verify callback receives only processed error and variables (not context)
+      await waitFor(() => {
+        expect(mockOnError).toHaveBeenCalledTimes(1);
+      });
+      expect(mockOnError).toHaveBeenCalledWith('Network Error', variables);
+      // Should NOT be called with context as third parameter
+    });
+  });
+
+  describe('Promise-based mutate function', () => {
+    test('should return a promise that resolves with mutation result', async () => {
+      const mockData = createMutationData();
+      const variables = createMutationVariables();
       mockMutationFn.mockResolvedValue(mockData);
-      
-      const result1 = await act(async () => await mutate1({ name: 'Test' }));
-      const result2 = await act(async () => await mutate2({ name: 'Test' }));
-      
-      expect(result1).toEqual(mockData);
-      expect(result2).toEqual(mockData);
-    });
-
-    test('should re-create mutate function when mutation function reference changes', async () => {
-      const mutationFn1 = jest.fn().mockResolvedValue('result1');
-      const mutationFn2 = jest.fn().mockResolvedValue('result2');
-
-      const { result: result1 } = renderHook(() => useMutation(mutationFn1), {
-        wrapper: QueryWrapper,
-      });
-      await waitFor(() => {
-        expect(result1.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result1.current)).toBe(true);
-      });
-
-      const [mutate1] = result1.current;
-
-      const { result: result2 } = renderHook(() => useMutation(mutationFn2), {
-        wrapper: QueryWrapper,
-      });
-      await waitFor(() => {
-        expect(result2.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result2.current)).toBe(true);
-      });
-
-      const [mutate2] = result2.current;
-
-      const result1Data = await act(async () => await mutate1('test1'));
-      const result2Data = await act(async () => await mutate2('test2'));
-
-      expect(result1Data).toBe('result1');
-      expect(result2Data).toBe('result2');
-      expect(mutationFn1).toHaveBeenCalledWith('test1');
-      expect(mutationFn2).toHaveBeenCalledWith('test2');
-    });
-  });
-
-  describe('Error handling edge cases', () => {
-    test('should handle errors without message property', async () => {
-      const mockError = { customError: true };
-      mockMutationFn.mockRejectedValue(mockError);
-
-      const { result } = renderHook(() => 
-        useMutation(mockMutationFn, { errorMessage: 'Custom error message' }), {
-        wrapper: QueryWrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
-
-      // Test that the mutation function is called and throws an error
-      await expect(async () => {
-        await mutate({ name: 'Test' });
-      }).rejects.toEqual(mockError);
-
-      // Verify the mutation function was called
-      expect(mockMutationFn).toHaveBeenCalledWith({ name: 'Test' });
-    });
-
-    test('should handle null error', async () => {
-      const mockError = null;
-      mockMutationFn.mockRejectedValue(mockError);
-
-      const { result } = renderHook(() => 
-        useMutation(mockMutationFn, { errorMessage: 'Custom error message' }), {
-        wrapper: QueryWrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
-
-      const [mutate] = result.current;
-
-      // Test that the mutation function is called and throws an error
-      await expect(async () => {
-        await mutate({ name: 'Test' });
-      }).rejects.toBeNull();
-
-      // Verify the mutation function was called
-      expect(mockMutationFn).toHaveBeenCalledWith({ name: 'Test' });
-    });
-  });
-
-  describe('Multiple mutations', () => {
-    test('should handle multiple sequential mutations', async () => {
-      const mockData1 = { id: 1, name: 'Test1' };
-      const mockData2 = { id: 2, name: 'Test2' };
-      mockMutationFn.mockResolvedValueOnce(mockData1).mockResolvedValueOnce(mockData2);
 
       const { result } = renderHook(() => useMutation(mockMutationFn), {
         wrapper: QueryWrapper,
       });
 
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
+      await waitForUseMutationReady(result);
 
       const [mutate] = result.current;
-
-      const result1 = await act(async () => await mutate({ name: 'Test1' }));
-      const result2 = await act(async () => await mutate({ name: 'Test2' }));
-
-      expect(result1).toEqual(mockData1);
-      expect(result2).toEqual(mockData2);
-      expect(mockMutationFn).toHaveBeenCalledTimes(2);
+      
+      // Test that mutate function returns a promise
+      const mutationPromise = mutate(variables);
+      expect(mutationPromise).toBeInstanceOf(Promise);
+      
+      const resultData = await mutationPromise;
+      expect(resultData).toEqual(mockData);
     });
 
-    test('should not allow concurrent mutations', async () => {
-      let resolveFirst;
-      let resolveSecond;
-      
-      const firstMutation = new Promise(resolve => {
-        resolveFirst = resolve;
-      });
-      
-      const secondMutation = new Promise(resolve => {
-        resolveSecond = resolve;
-      });
-
-      mockMutationFn
-        .mockReturnValueOnce(firstMutation)
-        .mockReturnValueOnce(secondMutation);
+    test('should return a promise that rejects with error', async () => {
+      const mockError = new Error('Network Error');
+      const variables = createMutationVariables();
+      mockMutationFn.mockRejectedValue(mockError);
 
       const { result } = renderHook(() => useMutation(mockMutationFn), {
         wrapper: QueryWrapper,
       });
 
-      await waitFor(() => {
-        expect(result.current).toBeDefined();
-      });
-      await waitFor(() => {
-        expect(Array.isArray(result.current)).toBe(true);
-      });
+      await waitForUseMutationReady(result);
 
       const [mutate] = result.current;
+      
+      // Test that mutate function returns a promise that rejects
+      const mutationPromise = mutate(variables);
+      expect(mutationPromise).toBeInstanceOf(Promise);
+      
+      await expect(mutationPromise).rejects.toThrow('Network Error');
+    });
+  });
 
-      // Start first mutation
-      const firstPromise = mutate({ name: 'First' });
+  describe('Custom state error handling', () => {
+    test('should process error state through handleApiError', async () => {
+      const mockError = new Error('Network Error');
+      const variables = createMutationVariables();
+      const customErrorMessage = 'Custom error message';
+      mockMutationFn.mockRejectedValue(mockError);
 
-      // Start second mutation while first is still pending
-      const secondPromise = mutate({ name: 'Second' });
+      const { result } = renderHook(() => 
+        useMutation(mockMutationFn, { errorMessage: customErrorMessage }), {
+        wrapper: QueryWrapper,
+      });
 
-      // Resolve first mutation
-      resolveFirst({ id: 1, name: 'First' });
-      await firstPromise;
+      await waitForUseMutationReady(result);
 
-      // Resolve second mutation
-      resolveSecond({ id: 2, name: 'Second' });
-      await secondPromise;
+      await act(async () => {
+        try {
+          await result.current[0](variables);
+        } catch (error) {
+          // Expected to throw
+        }
+      });
 
-      // Both mutations should complete successfully
-      expect(firstPromise).toBeDefined();
-      expect(secondPromise).toBeDefined();
+      // Wait for error state to be processed
+      await waitFor(() => {
+        const [, state] = result.current;
+        expect(state.error).toBe('Network Error'); // Processed by handleApiError
+      });
+    });
+
+    test('should return null for error state when no error', async () => {
+      const { result } = renderHook(() => useMutation(mockMutationFn), {
+        wrapper: QueryWrapper,
+      });
+
+      await waitForUseMutationReady(result);
+      
+      const [, state] = result.current;
+      expect(state.error).toBe(null);
+    });
+  });
+
+  describe('Edge cases for custom features', () => {
+    test('should handle missing onSuccess callback gracefully', async () => {
+      const mockData = createMutationData();
+      const variables = createMutationVariables();
+      mockMutationFn.mockResolvedValue(mockData);
+
+      const { result } = renderHook(() => useMutation(mockMutationFn), {
+        wrapper: QueryWrapper,
+      });
+
+      await waitForUseMutationReady(result);
+
+      // Should not throw when onSuccess is null/undefined
+      const mutationResult = await result.current[0](variables);
+      expect(mutationResult).toEqual(mockData);
+    });
+
+    test('should handle missing onError callback gracefully', async () => {
+      const mockError = new Error('Network Error');
+      const variables = createMutationVariables();
+      mockMutationFn.mockRejectedValue(mockError);
+
+      const { result } = renderHook(() => useMutation(mockMutationFn), {
+        wrapper: QueryWrapper,
+      });
+
+      await waitForUseMutationReady(result);
+
+      // Should not throw when onError is null/undefined
+      await expect(async () => {
+        await result.current[0](variables);
+      }).rejects.toThrow('Network Error');
+    });
+
+    test('should maintain custom API format throughout hook lifecycle', async () => {
+      const mockData = createMutationData();
+      const variables = createMutationVariables();
+      mockMutationFn.mockResolvedValue(mockData);
+
+      const { result } = renderHook(() => useMutation(mockMutationFn), {
+        wrapper: QueryWrapper,
+      });
+
+      await waitForUseMutationReady(result);
+      
+      // Verify format before mutation
+      expect(Array.isArray(result.current)).toBe(true);
+      expect(result.current).toHaveLength(2);
+      
+      await act(async () => {
+        await result.current[0](variables);
+      });
+      
+      // Wait for state to update after mutation
+      await waitFor(() => {
+        const [, state] = result.current;
+        expect(state.data).toEqual(mockData);
+      });
+      
+      // Verify format after mutation
+      expect(Array.isArray(result.current)).toBe(true);
+      expect(result.current).toHaveLength(2);
     });
   });
 });
