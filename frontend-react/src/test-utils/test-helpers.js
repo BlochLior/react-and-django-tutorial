@@ -176,5 +176,27 @@ export const assertPaginationElements = (currentPage, totalPages) => {
   expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
 };
 
+/**
+ * Common assertions for AdminQuestionCard component structure
+ */
+export const assertAdminQuestionCardElements = (question) => {
+  // Check main card structure
+  expect(screen.getByTestId('chakra-card')).toBeInTheDocument();
+  expect(screen.getByTestId('chakra-cardbody')).toBeInTheDocument();
+  expect(screen.getByTestId('chakra-cardfooter')).toBeInTheDocument();
+  
+  // Check question content
+  expect(screen.getByText(question.question_text)).toBeInTheDocument();
+  expect(screen.getByText(`Choices: ${question.choices?.length || 0}`)).toBeInTheDocument();
+  expect(screen.getByText(`ID: ${question.id}`)).toBeInTheDocument();
+  
+  // Check edit button
+  const editButton = screen.getByRole('link', { name: /edit question/i });
+  expect(editButton).toBeInTheDocument();
+  expect(editButton).toHaveAttribute('data-to', `/admin/questions/${question.id}`);
+  expect(editButton).toHaveAttribute('data-colorscheme', 'teal');
+  expect(editButton).toHaveAttribute('data-variant', 'outline');
+};
+
 // Note: Mock query functions have been moved to mocks.js for better separation of concerns
 // Import them from './mocks' if needed in your tests
