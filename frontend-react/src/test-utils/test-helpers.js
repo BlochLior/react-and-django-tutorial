@@ -198,5 +198,43 @@ export const assertAdminQuestionCardElements = (question) => {
   expect(editButton).toHaveAttribute('data-variant', 'outline');
 };
 
+/**
+ * Common assertions for AdminQuestionList component structure
+ */
+export const assertAdminQuestionListElements = (expectedCount) => {
+  // Check main container
+  const container = screen.getByTestId('admin-question-list');
+  expect(container).toBeInTheDocument();
+  
+  // Check correct number of question cards
+  const questionCards = screen.getAllByTestId(/admin-card-/);
+  expect(questionCards).toHaveLength(expectedCount);
+  
+  return { container, questionCards };
+};
+
+/**
+ * Assert that AdminQuestionList shows empty state
+ */
+export const assertAdminQuestionListEmptyState = () => {
+  expect(screen.getByText('No questions available')).toBeInTheDocument();
+  expect(screen.getByText('Create your first question to get started!')).toBeInTheDocument();
+  expect(screen.getByTestId('icon-fa-info-circle')).toBeInTheDocument();
+  
+  // Should not have any question cards
+  expect(screen.queryByTestId(/admin-card-/)).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that AdminQuestionList renders question cards correctly
+ */
+export const assertAdminQuestionListCards = (questions) => {
+  questions.forEach(question => {
+    expect(screen.getByTestId(`admin-card-${question.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`question-text-${question.id}`)).toHaveTextContent(question.question_text);
+    expect(screen.getByTestId(`question-id-${question.id}`)).toHaveTextContent(`ID: ${question.id}`);
+  });
+};
+
 // Note: Mock query functions have been moved to mocks.js for better separation of concerns
 // Import them from './mocks' if needed in your tests
