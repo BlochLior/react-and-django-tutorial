@@ -848,5 +848,211 @@ export const assertResultsSummaryQuestionResults = (questionsResults) => {
   });
 };
 
+/**
+ * Assert that PollsContainer renders loading state correctly
+ */
+export const assertPollsContainerLoadingState = () => {
+  expect(screen.getByText('Loading polls...')).toBeInTheDocument();
+  expect(screen.queryByTestId('question-list')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Review Answers/i })).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that PollsContainer renders success state with polls correctly
+ * @param {Object} expectedData - expected API response data
+ */
+export const assertPollsContainerSuccessState = (expectedData) => {
+  expect(screen.queryByText('Loading polls...')).not.toBeInTheDocument();
+  expect(screen.getByTestId('question-list')).toBeInTheDocument();
+  expect(screen.getByTestId('pagination')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Review Answers/i })).toBeInTheDocument();
+  expect(screen.queryByText('Network Error')).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that PollsContainer renders error state correctly
+ * @param {string} expectedError - expected error message
+ */
+export const assertPollsContainerErrorState = (expectedError) => {
+  expect(screen.queryByText('Loading polls...')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('question-list')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+  expect(screen.getByText(expectedError)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Review Answers/i })).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that PollsContainer renders pagination correctly
+ * @param {Object} expectedData - expected API response data with pagination info
+ */
+export const assertPollsContainerPagination = (expectedData) => {
+  expect(screen.getByTestId('pagination')).toBeInTheDocument();
+  
+  // Check pagination navigation states
+  const hasPrevious = expectedData.previous !== null;
+  const hasNext = expectedData.next !== null;
+  
+  const prevButton = screen.getByRole('button', { name: 'previous' });
+  const nextButton = screen.getByRole('button', { name: 'next' });
+  
+  if (hasPrevious) {
+    expect(prevButton).toBeEnabled();
+  } else {
+    expect(prevButton).toBeDisabled();
+  }
+  
+  if (hasNext) {
+    expect(nextButton).toBeEnabled();
+  } else {
+    expect(nextButton).toBeDisabled();
+  }
+};
+
+/**
+ * Assert that PollsContainer Review Answers button is in correct state
+ * @param {boolean} hasAnswers - whether answers are selected
+ */
+export const assertPollsContainerReviewButtonState = (hasAnswers) => {
+  const reviewButton = screen.getByRole('button', { name: /Review Answers/i });
+  
+  if (hasAnswers) {
+    expect(reviewButton).toBeEnabled();
+    expect(reviewButton).toHaveAttribute('title', 'Review your answers');
+  } else {
+    expect(reviewButton).toHaveAttribute('title', 'Please answer at least one question to review');
+  }
+};
+
+/**
+ * Assert that PollsContainer handles answer selection correctly
+ * @param {Function} mockOnAnswerChange - mock function for answer change callback
+ * @param {number} questionId - question ID
+ * @param {number} choiceId - choice ID
+ */
+export const assertPollsContainerAnswerSelection = (mockOnAnswerChange, questionId, choiceId) => {
+  expect(mockOnAnswerChange).toHaveBeenCalledWith(questionId, choiceId);
+};
+
+/**
+ * Assert that PollsContainer shows review page when answers are selected
+ */
+export const assertPollsContainerShowsReviewPage = () => {
+  expect(screen.getByTestId('review-page')).toBeInTheDocument();
+  expect(screen.queryByTestId('question-list')).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that PollsContainer stays in polls view when no answers selected
+ */
+export const assertPollsContainerStaysInPollsView = () => {
+  expect(screen.getByTestId('question-list')).toBeInTheDocument();
+  expect(screen.queryByTestId('review-page')).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that PollsContainer handles mutation success correctly
+ * @param {Function} mockMutate - mock mutation function
+ * @param {Object} expectedVotes - expected votes data
+ */
+export const assertPollsContainerMutationSuccess = (mockMutate, expectedVotes) => {
+  expect(mockMutate).toHaveBeenCalledWith(expectedVotes);
+};
+
+/**
+ * Assert that PollsContainer handles mutation loading state correctly
+ */
+export const assertPollsContainerMutationLoading = () => {
+  // Check that submit button is disabled during loading
+  const submitButton = screen.getByRole('button', { name: /Submit Votes/i });
+  expect(submitButton).toBeDisabled();
+};
+
+/**
+ * Assert that PollsContainer handles mutation error state correctly
+ * @param {string} expectedError - expected error message
+ */
+export const assertPollsContainerMutationError = (expectedError) => {
+  expect(screen.getByText(expectedError)).toBeInTheDocument();
+};
+
+/**
+ * Assert that ReviewPage renders questions and answers correctly
+ * @param {Array} questions - array of question objects
+ * @param {Object} selectedAnswers - object mapping question IDs to choice IDs
+ */
+export const assertReviewPageElements = (questions, selectedAnswers) => {
+  // Check that each question is displayed
+  questions.forEach(question => {
+    expect(screen.getByText(question.question_text)).toBeInTheDocument();
+  });
+
+  // Check that "Your answer:" badges are displayed for answered questions
+  const answeredQuestions = Object.keys(selectedAnswers);
+  const answerBadges = screen.getAllByText('Your answer:');
+  expect(answerBadges).toHaveLength(answeredQuestions.length);
+
+  // Check that selected choice texts are displayed
+  answeredQuestions.forEach(questionId => {
+    const question = questions.find(q => q.id === parseInt(questionId));
+    const choiceId = selectedAnswers[questionId];
+    const choice = question.choices.find(c => c.id === choiceId);
+    if (choice) {
+      expect(screen.getByText(choice.choice_text)).toBeInTheDocument();
+    }
+  });
+};
+
+/**
+ * Assert that ReviewPage submit button is in correct state
+ * @param {boolean} shouldBeEnabled - whether submit button should be enabled
+ */
+export const assertReviewPageSubmitState = (shouldBeEnabled) => {
+  const submitButton = screen.getByRole('button', { name: /submit all votes/i });
+  
+  if (shouldBeEnabled) {
+    expect(submitButton).not.toBeDisabled();
+  } else {
+    expect(submitButton).toBeDisabled();
+    expect(screen.getByText('Please answer at least one question before submitting')).toBeInTheDocument();
+  }
+};
+
+/**
+ * Assert that ReviewPage handles empty state correctly
+ */
+export const assertReviewPageEmptyState = () => {
+  expect(screen.getByRole('button', { name: /submit all votes/i })).toBeInTheDocument();
+  // Should not have any "Your answer:" badges when no questions
+  expect(screen.queryByText('Your answer:')).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that ReviewPage handles incomplete answers correctly
+ * @param {Array} questions - array of question objects
+ * @param {Object} selectedAnswers - object mapping question IDs to choice IDs
+ */
+export const assertReviewPageIncompleteAnswers = (questions, selectedAnswers) => {
+  // Should display all questions
+  questions.forEach(question => {
+    expect(screen.getByText(question.question_text)).toBeInTheDocument();
+  });
+
+  // Should only show "Your answer:" badges for answered questions
+  const answeredQuestions = Object.keys(selectedAnswers);
+  const answerBadges = screen.getAllByText('Your answer:');
+  expect(answerBadges).toHaveLength(answeredQuestions.length);
+};
+
+/**
+ * Assert that ReviewPage calls onSubmit callback
+ * @param {Function} mockOnSubmit - mock function for onSubmit callback
+ */
+export const assertReviewPageSubmission = (mockOnSubmit) => {
+  expect(mockOnSubmit).toHaveBeenCalledTimes(1);
+  // ReviewPage calls onSubmit without parameters, just the click event
+  expect(mockOnSubmit).toHaveBeenCalledWith(expect.any(Object)); // Click event
+};
+
 // Note: Mock query functions have been moved to mocks.js for better separation of concerns
 // Import them from './mocks' if needed in your tests

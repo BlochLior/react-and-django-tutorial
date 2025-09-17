@@ -362,4 +362,94 @@ export const TEST_SCENARIOS = {
     loading: false,
     error: null,
   },
+  // PollsContainer specific test scenarios
+  POLLS_CONTAINER_LOADING: {
+    data: null,
+    loading: true,
+    error: null,
+  },
+  POLLS_CONTAINER_SUCCESS: {
+    data: {
+      results: createQuestions(2),
+      page: 1,
+      total_pages: 1,
+      previous: null,
+      next: null,
+    },
+    loading: false,
+    error: null,
+    onSuccess: jest.fn(),
+  },
+  POLLS_CONTAINER_ERROR: {
+    data: null,
+    loading: false,
+    error: 'Network Error',
+  },
+  POLLS_CONTAINER_WITH_PAGINATION: {
+    data: {
+      results: createQuestions(5),
+      page: 2,
+      total_pages: 3,
+      previous: 'http://api.example.com/polls/?page=1',
+      next: 'http://api.example.com/polls/?page=3',
+    },
+    loading: false,
+    error: null,
+    onSuccess: jest.fn(),
+  },
+  POLLS_CONTAINER_EMPTY: {
+    data: {
+      results: [],
+      page: 1,
+      total_pages: 1,
+      previous: null,
+      next: null,
+    },
+    loading: false,
+    error: null,
+  },
+  POLLS_CONTAINER_MUTATION_SUCCESS: {
+    mutate: jest.fn().mockResolvedValue({ status: 200 }),
+    data: null,
+    loading: false,
+    error: null,
+  },
+  POLLS_CONTAINER_MUTATION_LOADING: {
+    mutate: jest.fn(),
+    data: null,
+    loading: true,
+    error: null,
+  },
+  POLLS_CONTAINER_MUTATION_ERROR: {
+    mutate: jest.fn().mockRejectedValue(new Error('Submission failed')),
+    data: null,
+    loading: false,
+    error: 'Submission failed',
+  },
+  // ReviewPage specific test scenarios
+  REVIEW_PAGE_COMPLETE_ANSWERS: {
+    questions: createQuestions(3),
+    selectedAnswers: createSelectedAnswers([1, 2, 3]),
+    onSubmit: jest.fn(),
+  },
+  REVIEW_PAGE_INCOMPLETE_ANSWERS: {
+    questions: createQuestions(3),
+    selectedAnswers: { 1: 101 }, // Only first question answered
+    onSubmit: jest.fn(),
+  },
+  REVIEW_PAGE_EMPTY: {
+    questions: [],
+    selectedAnswers: {},
+    onSubmit: jest.fn(),
+  },
+  REVIEW_PAGE_SINGLE_QUESTION: {
+    questions: [createQuestion()],
+    selectedAnswers: createSelectedAnswers([1]),
+    onSubmit: jest.fn(),
+  },
+  REVIEW_PAGE_NO_ANSWERS: {
+    questions: createQuestions(2),
+    selectedAnswers: {}, // No answers selected
+    onSubmit: jest.fn(),
+  },
 };

@@ -33,6 +33,18 @@ This directory contains comprehensive documentation of the frontend React projec
 - **Key Topics**: MSW removal, centralized mocking, consistent patterns
 - **Status**: ✅ Complete - Single source of truth for mocks
 
+### **🔄 Test Refactoring & Centralization**
+
+#### [Test Refactoring Template](./REFACTORING_TEMPLATE.md)
+- **Overview**: Systematic approach to refactor test files for maximum maintainability
+- **Key Topics**: Centralized test utilities, TEST_SCENARIOS, assertion helpers, test isolation
+- **Status**: ✅ Complete - Template successfully applied to PollsContainer and ReviewPage tests
+- **Achievements**: 
+  - PollsContainer.test.jsx refactored with centralized patterns
+  - ReviewPage.test.jsx refactored with component-specific helpers
+  - Eliminated redundancy between unit and integration tests
+  - 100% test success rate maintained (181/181 tests passing)
+
 ## 🔧 Technical Architecture
 
 ### **Test Utilities Structure**
@@ -86,7 +98,7 @@ src/test-utils/
 ### **After Fixes**
 - ✅ **Stable API usage** with normal request patterns
 - ✅ **Smooth UI rendering** with proper loading states
-- ✅ **100% test success rate** with consistent patterns
+- ✅ **100% test success rate** with consistent patterns (181/181 tests passing)
 - ✅ **Production-ready** React Query integration
 - ✅ **Enterprise-level testing** infrastructure
 

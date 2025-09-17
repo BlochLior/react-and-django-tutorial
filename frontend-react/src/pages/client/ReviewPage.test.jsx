@@ -1,109 +1,104 @@
-// src/pages/client/ReviewPage.test.jsx
-
 import React from 'react';
-import { screen } from '@testing-library/react';
-import { render } from '../../test-utils';
-import { createUserEvent } from '../../test-utils/test-helpers';
-import { TEST_SCENARIOS } from '../../test-utils/test-data';
+import { 
+  render, 
+  cleanup,
+  screen,
+  TEST_SCENARIOS,
+  assertReviewPageElements,
+  assertReviewPageSubmitState,
+  assertReviewPageEmptyState,
+  assertReviewPageIncompleteAnswers,
+  assertReviewPageSubmission,
+  createUserEvent
+} from '../../test-utils';
 import ReviewPage from './ReviewPage';
 
 describe('ReviewPage', () => {
+  beforeEach(() => {
+    cleanup();
+  });
+
   const renderReviewPage = (props = {}) => {
     const defaultProps = {
-      questions: TEST_SCENARIOS.MULTIPLE_QUESTIONS.questions,
-      selectedAnswers: TEST_SCENARIOS.MULTIPLE_QUESTIONS.selectedAnswers,
-      onSubmit: jest.fn(),
+      questions: TEST_SCENARIOS.REVIEW_PAGE_COMPLETE_ANSWERS.questions,
+      selectedAnswers: TEST_SCENARIOS.REVIEW_PAGE_COMPLETE_ANSWERS.selectedAnswers,
+      onSubmit: TEST_SCENARIOS.REVIEW_PAGE_COMPLETE_ANSWERS.onSubmit,
     };
     
     return render(<ReviewPage {...defaultProps} {...props} />);
   };
 
-  describe('Rendering', () => {
+  describe('Default Rendering', () => {
     test('renders questions and their selected choices', () => {
-      renderReviewPage();
-
-      // Assert that each question is displayed
-      expect(screen.getByText('Question 1')).toBeInTheDocument();
-      expect(screen.getByText('Question 2')).toBeInTheDocument();
-      expect(screen.getByText('Question 3')).toBeInTheDocument();
-
-      // Assert that the "Your answer:" badge and choice text are displayed separately
-      // Since there are multiple "Your answer:" badges, use getAllByText
-      const answerBadges = screen.getAllByText('Your answer:');
-      expect(answerBadges).toHaveLength(3); // Should have 3 badges for 3 questions
+      const scenario = TEST_SCENARIOS.REVIEW_PAGE_COMPLETE_ANSWERS;
+      renderReviewPage(scenario);
       
-      expect(screen.getByText('Choice A for Q1')).toBeInTheDocument();
-      expect(screen.getByText('Choice A for Q2')).toBeInTheDocument();
-      expect(screen.getByText('Choice A for Q3')).toBeInTheDocument();
+      assertReviewPageElements(scenario.questions, scenario.selectedAnswers);
     });
 
-    test('renders submit button', () => {
+    test('renders submit button in enabled state', () => {
       renderReviewPage();
-
-      expect(screen.getByRole('button', { name: /submit all votes/i })).toBeInTheDocument();
+      
+      assertReviewPageSubmitState(true);
     });
   });
 
   describe('Edge Cases', () => {
-    test('handles questions with no selected answers', () => {
-      renderReviewPage({
-        questions: TEST_SCENARIOS.INCOMPLETE_ANSWERS.questions,
-        selectedAnswers: TEST_SCENARIOS.INCOMPLETE_ANSWERS.selectedAnswers,
-      });
-
-      // Should display unanswered questions
-      expect(screen.getByText('Question 2')).toBeInTheDocument();
+    test('handles questions with incomplete answers', () => {
+      const scenario = TEST_SCENARIOS.REVIEW_PAGE_INCOMPLETE_ANSWERS;
+      renderReviewPage(scenario);
+      
+      assertReviewPageIncompleteAnswers(scenario.questions, scenario.selectedAnswers);
     });
 
     test('handles empty questions array', () => {
-      renderReviewPage({
-        questions: [],
-        selectedAnswers: {},
-      });
-
-      expect(screen.getByRole('button', { name: /submit all votes/i })).toBeInTheDocument();
+      const scenario = TEST_SCENARIOS.REVIEW_PAGE_EMPTY;
+      renderReviewPage(scenario);
+      
+      assertReviewPageEmptyState();
     });
 
     test('handles single question', () => {
-      renderReviewPage({
-        questions: TEST_SCENARIOS.SINGLE_QUESTION.questions,
-        selectedAnswers: TEST_SCENARIOS.SINGLE_QUESTION.selectedAnswers,
-      });
+      const scenario = TEST_SCENARIOS.REVIEW_PAGE_SINGLE_QUESTION;
+      renderReviewPage(scenario);
+      
+      assertReviewPageElements(scenario.questions, scenario.selectedAnswers);
+    });
 
-      expect(screen.getByText('What is your favorite color?')).toBeInTheDocument();
-      expect(screen.getByText('Your answer:')).toBeInTheDocument();
-      expect(screen.getByText('Red')).toBeInTheDocument();
+    test('handles no answers selected', () => {
+      const scenario = TEST_SCENARIOS.REVIEW_PAGE_NO_ANSWERS;
+      renderReviewPage(scenario);
+      
+      assertReviewPageSubmitState(false);
     });
   });
 
   describe('User Interactions', () => {
     test('calls onSubmit when submit button is clicked', async () => {
       const user = createUserEvent();
+      const scenario = TEST_SCENARIOS.REVIEW_PAGE_COMPLETE_ANSWERS;
       const mockOnSubmit = jest.fn();
-      renderReviewPage({ onSubmit: mockOnSubmit });
+      
+      renderReviewPage({ ...scenario, onSubmit: mockOnSubmit });
 
       const submitButton = screen.getByRole('button', { name: /submit all votes/i });
       await user.click(submitButton);
 
-      expect(mockOnSubmit).toHaveBeenCalledTimes(1);
+      assertReviewPageSubmission(mockOnSubmit);
     });
 
     test('submit button is disabled when no questions are answered', () => {
-      renderReviewPage({
-        questions: TEST_SCENARIOS.MULTIPLE_QUESTIONS.questions,
-        selectedAnswers: {}, // No answers selected
-      });
-
-      const submitButton = screen.getByRole('button', { name: /submit all votes/i });
-      expect(submitButton).toBeDisabled();
-      expect(screen.getByText('Please answer at least one question before submitting')).toBeInTheDocument();
+      const scenario = TEST_SCENARIOS.REVIEW_PAGE_NO_ANSWERS;
+      renderReviewPage(scenario);
+      
+      assertReviewPageSubmitState(false);
     });
 
     test('submit button is enabled when at least one question is answered', () => {
-      renderReviewPage();
-
-      const submitButton = screen.getByRole('button', { name: /submit all votes/i });
-      expect(submitButton).not.toBeDisabled();
+      const scenario = TEST_SCENARIOS.REVIEW_PAGE_COMPLETE_ANSWERS;
+      renderReviewPage(scenario);
+      
+      assertReviewPageSubmitState(true);
     });
   });
 });
