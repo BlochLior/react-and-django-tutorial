@@ -143,6 +143,25 @@ export const createUserEvent = () => {
 };
 
 /**
+ * Assert that text content is rendered correctly, handling whitespace-only messages
+ * @param {string} text - text content to find
+ * @param {string} testId - test ID of the container element (e.g., 'chakra-text', 'chakra-alertdescription')
+ * @param {boolean} shouldRender - whether the text should be rendered
+ */
+export const assertTextContent = (text, testId, shouldRender = true) => {
+  if (shouldRender && text) {
+    // Handle whitespace-only messages by checking the text content directly
+    if (text.trim() === '' && text.length > 0) {
+      const textElement = screen.getByTestId(testId);
+      expect(textElement).toBeInTheDocument();
+      expect(textElement.textContent).toBe(text);
+    } else {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    }
+  }
+};
+
+/**
  * Common assertions for form elements (create form)
  */
 export const assertFormElements = () => {
@@ -531,14 +550,7 @@ export const assertErrorStateNotRendered = () => {
 export const assertErrorStateMessageHandling = (message, shouldRender = true) => {
   if (shouldRender) {
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    // For whitespace-only messages, check that the alert description contains the content
-    if (message && message.trim() === '') {
-      const alertDescription = screen.getByTestId('chakra-alertdescription');
-      expect(alertDescription).toBeInTheDocument();
-      expect(alertDescription.textContent).toBe(message);
-    } else {
-      expect(screen.getByText(message)).toBeInTheDocument();
-    }
+    assertTextContent(message, 'chakra-alertdescription', shouldRender);
   } else {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   }
@@ -558,6 +570,82 @@ export const assertErrorStateCustomProps = (message, title, status, variant) => 
   
   // Verify alert is present (styling is handled by Chakra UI)
   expect(alert).toBeInTheDocument();
+};
+
+/**
+ * Common assertions for LoadingState component structure
+ */
+export const assertLoadingStateElements = (message = 'Loading...') => {
+  // Check main container structure
+  expect(screen.getByTestId('chakra-center')).toBeInTheDocument();
+  expect(screen.getByTestId('chakra-vstack')).toBeInTheDocument();
+  
+  // Check spinner is present
+  expect(screen.getByTestId('chakra-spinner')).toBeInTheDocument();
+  
+  // Check message if provided
+  if (message) {
+    expect(screen.getByText(message)).toBeInTheDocument();
+  }
+};
+
+/**
+ * Assert that LoadingState renders with correct spinner properties
+ */
+export const assertLoadingStateSpinnerProps = (size = 'xl', color = 'teal.500', thickness = '4px') => {
+  const spinner = screen.getByTestId('chakra-spinner');
+  expect(spinner).toBeInTheDocument();
+  expect(spinner).toHaveAttribute('data-size', size);
+  expect(spinner).toHaveAttribute('data-color', color);
+  expect(spinner).toHaveAttribute('data-thickness', thickness);
+};
+
+/**
+ * Assert that LoadingState renders without message when message is falsy
+ */
+export const assertLoadingStateNoMessage = () => {
+  expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+  expect(screen.getByTestId('chakra-spinner')).toBeInTheDocument();
+};
+
+/**
+ * Assert that LoadingState handles different message types correctly
+ */
+export const assertLoadingStateMessageHandling = (message, shouldRender = true) => {
+  if (shouldRender && message) {
+    assertTextContent(message, 'chakra-text', shouldRender);
+  } else {
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+  }
+  // Spinner should always be present
+  expect(screen.getByTestId('chakra-spinner')).toBeInTheDocument();
+};
+
+/**
+ * Assert that LoadingState renders with custom props correctly
+ */
+export const assertLoadingStateCustomProps = (message, spinnerSize, spinnerColor, spinnerThickness) => {
+  // Check structure
+  assertLoadingStateElements(message);
+  
+  // Check spinner properties
+  assertLoadingStateSpinnerProps(spinnerSize, spinnerColor, spinnerThickness);
+};
+
+/**
+ * Assert that LoadingState maintains proper layout structure
+ */
+export const assertLoadingStateLayout = () => {
+  // Should have the center container
+  const centerContainer = screen.getByTestId('chakra-center');
+  expect(centerContainer).toBeInTheDocument();
+  
+  // Should have the vertical stack
+  const vStack = screen.getByTestId('chakra-vstack');
+  expect(vStack).toBeInTheDocument();
+  
+  // Should have spinner
+  expect(screen.getByTestId('chakra-spinner')).toBeInTheDocument();
 };
 
 // Note: Mock query functions have been moved to mocks.js for better separation of concerns

@@ -46,29 +46,13 @@ describe('ErrorState', () => {
   });
 
   describe('Custom Falsy Message Handling', () => {
-    test('renders nothing when message is empty string', () => {
-      const { message } = TEST_SCENARIOS.ERROR_STATE_EMPTY;
-      renderComponent({ message });
-      
-      assertErrorStateNotRendered();
-    });
-
-    test('renders nothing when message is null', () => {
-      const { message } = TEST_SCENARIOS.ERROR_STATE_NULL;
-      renderComponent({ message });
-      
-      assertErrorStateNotRendered();
-    });
-
-    test('renders nothing when message is undefined', () => {
-      const { message } = TEST_SCENARIOS.ERROR_STATE_UNDEFINED;
-      renderComponent({ message });
-      
-      assertErrorStateNotRendered();
-    });
-
-    test('renders nothing when no props are provided', () => {
-      renderComponent();
+    test.each([
+      ['empty string', TEST_SCENARIOS.ERROR_STATE_EMPTY.message],
+      ['null', TEST_SCENARIOS.ERROR_STATE_NULL.message],
+      ['undefined', TEST_SCENARIOS.ERROR_STATE_UNDEFINED.message],
+      ['no props', undefined]
+    ])('renders nothing when message is %s', (_, message) => {
+      renderComponent(message !== undefined ? { message } : {});
       
       assertErrorStateNotRendered();
     });

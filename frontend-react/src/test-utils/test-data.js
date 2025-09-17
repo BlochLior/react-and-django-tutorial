@@ -167,4 +167,47 @@ export const TEST_SCENARIOS = {
     status: 'error',
     variant: 'subtle',
   },
+  // LoadingState specific test scenarios
+  LOADING_STATE_DEFAULT: {
+    message: 'Loading...',
+    spinnerSize: 'xl',
+    spinnerColor: 'teal.500',
+    spinnerThickness: '4px',
+  },
+  LOADING_STATE_CUSTOM_MESSAGE: {
+    message: 'Please wait while we fetch your data...',
+    spinnerSize: 'xl',
+    spinnerColor: 'teal.500',
+    spinnerThickness: '4px',
+  },
+  LOADING_STATE_CUSTOM_SPINNER: {
+    message: 'Loading...',
+    spinnerSize: 'sm',
+    spinnerColor: 'blue.500',
+    spinnerThickness: '8px',
+  },
+  LOADING_STATE_ALL_CUSTOM: {
+    message: 'Custom loading message',
+    spinnerSize: 'lg',
+    spinnerColor: 'red.500',
+    spinnerThickness: '6px',
+  },
+  LOADING_STATE_NO_MESSAGE: {
+    message: '',
+    spinnerSize: 'xl',
+    spinnerColor: 'teal.500',
+    spinnerThickness: '4px',
+  },
+  LOADING_STATE_NULL_MESSAGE: {
+    message: null,
+    spinnerSize: 'xl',
+    spinnerColor: 'teal.500',
+    spinnerThickness: '4px',
+  },
+  LOADING_STATE_UNDEFINED_MESSAGE: {
+    message: undefined,
+    spinnerSize: 'xl',
+    spinnerColor: 'teal.500',
+    spinnerThickness: '4px',
+  },
 };
