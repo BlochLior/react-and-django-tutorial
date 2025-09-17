@@ -272,5 +272,56 @@ export const assertQuestionCardAnswerChange = (mockOnAnswerChange, questionId, e
   expect(mockOnAnswerChange).toHaveBeenCalledWith(questionId, expectedChoiceId);
 };
 
+/**
+ * Common assertions for QuestionList component structure
+ */
+export const assertQuestionListElements = (expectedCount) => {
+  // Check main container
+  const container = screen.getByTestId('question-list');
+  expect(container).toBeInTheDocument();
+  
+  // Check correct number of question cards
+  const questionCards = screen.getAllByTestId(/question-card-/);
+  expect(questionCards).toHaveLength(expectedCount);
+  
+  return { container, questionCards };
+};
+
+/**
+ * Assert that QuestionList shows empty state
+ */
+export const assertQuestionListEmptyState = () => {
+  expect(screen.getByText('No polls available at the moment.')).toBeInTheDocument();
+  expect(screen.getByText('Check back later for new polls!')).toBeInTheDocument();
+  
+  // Should not have the main container when empty
+  expect(screen.queryByTestId('question-list')).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that QuestionList renders question cards correctly
+ */
+export const assertQuestionListCards = (questions) => {
+  questions.forEach(question => {
+    expect(screen.getByTestId(`question-card-${question.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`question-text-${question.id}`)).toHaveTextContent(question.question_text);
+    expect(screen.getByTestId(`question-choices-${question.id}`)).toHaveTextContent(`${question.choices.length} choices`);
+  });
+};
+
+/**
+ * Assert that QuestionList handles different data states correctly
+ */
+export const assertQuestionListDataStates = () => {
+  // Test empty array
+  expect(screen.getByText('No polls available at the moment.')).toBeInTheDocument();
+  
+  // Test null
+  expect(screen.getByText('No polls available at the moment.')).toBeInTheDocument();
+  
+  // Test undefined
+  expect(screen.getByText('No polls available at the moment.')).toBeInTheDocument();
+};
+
 // Note: Mock query functions have been moved to mocks.js for better separation of concerns
 // Import them from './mocks' if needed in your tests
