@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
+// This is a remenant from some debugging of the chakra spinner
+
 // Import our mock directly
 const { Spinner } = require('./chakra-mock');
 
