@@ -51,6 +51,9 @@ This template provides a systematic approach to refactor test files to maximize 
 - Leverage existing utilities like `assertTextContent()` for whitespace handling
 - Don't import `screen` if using centralized assertion helpers
 - Ensure mock functions are properly reset between tests
+- **IMPORTANT**: Always import `waitFor` from test-utils if using async assertions
+- Use `renderComponent()` helper function for consistent component rendering
+- Group related test scenarios in `TEST_SCENARIOS` with descriptive names
 
 ## Refactoring Process
 1. Analyze current test file and identify custom features to test
@@ -83,6 +86,13 @@ This template provides a systematic approach to refactor test files to maximize 
 - Mock external dependencies and API calls
 - Test error handling and edge cases
 - Use existing mutation and query assertion helpers
+
+### For Results/Summary Components (like ResultsSummary)
+- Focus on data display, statistics calculation, and result formatting
+- Mock complex utility functions and external dependencies
+- Test different data states (empty, populated, error)
+- Create assertion helpers for result-specific elements and calculations
+- Use `TEST_SCENARIOS` for different summary data configurations
 
 ## Example Refactored Test Structure
 
@@ -140,16 +150,23 @@ import React from 'react';
 import { 
   render, 
   cleanup,
+  waitFor,
   TEST_SCENARIOS,
-  assertUseQuerySuccessState,
-  assertUseQueryErrorState,
-  createQuestions
+  assertAdminDashboardLoadingState,
+  assertAdminDashboardSuccessState,
+  assertAdminDashboardErrorState,
+  assertAdminDashboardEmptyState,
+  assertAdminDashboardStatistics
 } from '../../test-utils';
 import AdminDashboard from './AdminDashboard';
 
 describe('AdminDashboard', () => {
+  let mockUseQuery;
+  
   beforeEach(() => {
     cleanup();
+    mockUseQuery = require('../../hooks/useQuery').default;
+    mockUseQuery.mockReset();
   });
 
   const renderAdminDashboard = () => {
@@ -158,17 +175,42 @@ describe('AdminDashboard', () => {
 
   describe('Data Loading States', () => {
     test('renders loading state initially', () => {
-      // Mock useQuery to return loading state
+      const scenario = TEST_SCENARIOS.ADMIN_DASHBOARD_LOADING;
+      mockUseQuery.mockReturnValue(scenario);
+      
       renderAdminDashboard();
-      expect(screen.getByText('Loading questions...')).toBeInTheDocument();
+      assertAdminDashboardLoadingState();
     });
 
     test('renders questions after successful API fetch', () => {
-      const mockQuestions = createQuestions(2);
-      // Mock useQuery to return success state
+      const scenario = TEST_SCENARIOS.ADMIN_DASHBOARD_SUCCESS;
+      mockUseQuery.mockReturnValue(scenario);
+      
+      renderAdminDashboard();
+      assertAdminDashboardSuccessState(scenario.data);
+    });
+  });
+
+  describe('Statistics Display', () => {
+    test('displays correct statistics when questions are loaded', async () => {
+      const scenario = TEST_SCENARIOS.ADMIN_DASHBOARD_WITH_STATS;
+      
+      mockUseQuery.mockImplementation((queryFn, deps, options) => {
+        if (options?.onSuccess) {
+          setTimeout(() => options.onSuccess(scenario.data), 0);
+        }
+        return {
+          data: scenario.data,
+          loading: false,
+          error: null
+        };
+      });
+      
       renderAdminDashboard();
       
-      assertUseQuerySuccessState(mockQuestions);
+      await waitFor(() => {
+        assertAdminDashboardStatistics(scenario.data.count);
+      });
     });
   });
 });

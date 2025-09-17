@@ -260,4 +260,106 @@ export const TEST_SCENARIOS = {
     hasPrevious: true,
     hasNext: true,
   },
+  // AdminDashboard specific test scenarios
+  ADMIN_DASHBOARD_LOADING: {
+    data: null,
+    loading: true,
+    error: null,
+  },
+  ADMIN_DASHBOARD_SUCCESS: {
+    data: {
+      count: 2,
+      results: createQuestions(2),
+    },
+    loading: false,
+    error: null,
+  },
+  ADMIN_DASHBOARD_ERROR: {
+    data: null,
+    loading: false,
+    error: 'Network Error',
+  },
+  ADMIN_DASHBOARD_EMPTY: {
+    data: {
+      count: 0,
+      results: [],
+    },
+    loading: false,
+    error: null,
+  },
+  ADMIN_DASHBOARD_WITH_STATS: {
+    data: {
+      count: 5,
+      results: createQuestions(5),
+    },
+    loading: false,
+    error: null,
+    onSuccess: jest.fn(),
+  },
+  // ResultsSummary specific test scenarios
+  RESULTS_SUMMARY_LOADING: {
+    data: null,
+    loading: true,
+    error: null,
+  },
+  RESULTS_SUMMARY_SUCCESS: {
+    data: {
+      total_questions: 1,
+      total_votes_all_questions: 10,
+      questions_results: [
+        {
+          id: 1,
+          question_text: 'What is your favorite color?',
+          total_votes: 10,
+          choices: [
+            { id: 1, choice_text: 'Red', votes: 10 }
+          ]
+        }
+      ]
+    },
+    loading: false,
+    error: null,
+  },
+  RESULTS_SUMMARY_EMPTY: {
+    data: {
+      total_questions: 0,
+      total_votes_all_questions: 0,
+      questions_results: []
+    },
+    loading: false,
+    error: null,
+  },
+  RESULTS_SUMMARY_ERROR: {
+    data: null,
+    loading: false,
+    error: 'Failed to fetch poll results.',
+  },
+  RESULTS_SUMMARY_MULTIPLE_QUESTIONS: {
+    data: {
+      total_questions: 2,
+      total_votes_all_questions: 25,
+      questions_results: [
+        {
+          id: 1,
+          question_text: 'What is your favorite color?',
+          total_votes: 10,
+          choices: [
+            { id: 1, choice_text: 'Red', votes: 6 },
+            { id: 2, choice_text: 'Blue', votes: 4 }
+          ]
+        },
+        {
+          id: 2,
+          question_text: 'What is your favorite season?',
+          total_votes: 15,
+          choices: [
+            { id: 3, choice_text: 'Spring', votes: 8 },
+            { id: 4, choice_text: 'Summer', votes: 7 }
+          ]
+        }
+      ]
+    },
+    loading: false,
+    error: null,
+  },
 };

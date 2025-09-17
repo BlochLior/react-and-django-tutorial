@@ -733,5 +733,120 @@ export const assertLoadingStateLayout = () => {
   expect(screen.getByTestId('chakra-spinner')).toBeInTheDocument();
 };
 
+/**
+ * Assert that AdminDashboard renders loading state correctly
+ */
+export const assertAdminDashboardLoadingState = () => {
+  expect(screen.getByText('Loading questions...')).toBeInTheDocument();
+  expect(screen.queryByTestId('admin-question-list')).not.toBeInTheDocument();
+  expect(screen.queryByText('Network Error')).not.toBeInTheDocument();
+  expect(screen.queryByText('No questions available yet.')).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that AdminDashboard renders success state with questions correctly
+ * @param {Object} expectedData - expected API response data
+ */
+export const assertAdminDashboardSuccessState = (expectedData) => {
+  expect(screen.queryByText('Loading questions...')).not.toBeInTheDocument();
+  expect(screen.getByTestId('admin-question-list')).toBeInTheDocument();
+  expect(screen.queryByText('Network Error')).not.toBeInTheDocument();
+  expect(screen.queryByText('No questions available yet.')).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that AdminDashboard renders error state correctly
+ * @param {string} expectedError - expected error message
+ */
+export const assertAdminDashboardErrorState = (expectedError) => {
+  expect(screen.queryByText('Loading questions...')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('admin-question-list')).not.toBeInTheDocument();
+  expect(screen.getByText(expectedError)).toBeInTheDocument();
+  expect(screen.queryByText('No questions available yet.')).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that AdminDashboard renders empty state correctly
+ */
+export const assertAdminDashboardEmptyState = () => {
+  expect(screen.queryByText('Loading questions...')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('admin-question-list')).not.toBeInTheDocument();
+  expect(screen.queryByText('Network Error')).not.toBeInTheDocument();
+  expect(screen.getByText('No questions available yet.')).toBeInTheDocument();
+};
+
+/**
+ * Assert that AdminDashboard displays statistics correctly
+ * @param {number} expectedCount - expected question count
+ */
+export const assertAdminDashboardStatistics = (expectedCount) => {
+  expect(screen.getByText(expectedCount.toString())).toBeInTheDocument();
+  expect(screen.getByText('Total Questions')).toBeInTheDocument();
+};
+
+/**
+ * Assert that ResultsSummary renders loading state correctly
+ */
+export const assertResultsSummaryLoadingState = () => {
+  expect(screen.getByText('Loading results...')).toBeInTheDocument();
+  expect(screen.queryByText('Poll Results Summary')).not.toBeInTheDocument();
+  expect(screen.queryByText('No results to display.')).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that ResultsSummary renders success state with results correctly
+ * @param {Object} expectedData - expected API response data
+ */
+export const assertResultsSummarySuccessState = (expectedData) => {
+  expect(screen.queryByText('Loading results...')).not.toBeInTheDocument();
+  expect(screen.getByText('Poll Results Summary')).toBeInTheDocument();
+  expect(screen.getByText('Total Questions')).toBeInTheDocument();
+  expect(screen.getByText(expectedData.total_questions.toString())).toBeInTheDocument();
+  expect(screen.getByText('Total Votes')).toBeInTheDocument();
+  expect(screen.getByText(expectedData.total_votes_all_questions.toString())).toBeInTheDocument();
+  expect(screen.queryByText('No results to display.')).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that ResultsSummary renders error state correctly
+ * @param {string} expectedError - expected error message
+ */
+export const assertResultsSummaryErrorState = (expectedError) => {
+  expect(screen.queryByText('Loading results...')).not.toBeInTheDocument();
+  expect(screen.queryByText('Poll Results Summary')).not.toBeInTheDocument();
+  expect(screen.getByText(expectedError)).toBeInTheDocument();
+  expect(screen.queryByText('No results to display.')).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that ResultsSummary renders empty state correctly
+ */
+export const assertResultsSummaryEmptyState = () => {
+  expect(screen.queryByText('Loading results...')).not.toBeInTheDocument();
+  expect(screen.queryByText('Poll Results Summary')).not.toBeInTheDocument();
+  expect(screen.getByText('No results to display.')).toBeInTheDocument();
+};
+
+/**
+ * Assert that ResultsSummary displays question results correctly
+ * @param {Array} questionsResults - array of question result objects
+ */
+export const assertResultsSummaryQuestionResults = (questionsResults) => {
+  questionsResults.forEach(question => {
+    expect(screen.getByText(question.question_text)).toBeInTheDocument();
+    
+    question.choices.forEach(choice => {
+      expect(screen.getByText(choice.choice_text)).toBeInTheDocument();
+      expect(screen.getByText(`${choice.votes} votes`)).toBeInTheDocument();
+      
+      // Calculate expected percentage
+      const expectedPercentage = question.total_votes > 0 
+        ? ((choice.votes / question.total_votes) * 100).toFixed(1)
+        : '0.0';
+      expect(screen.getByText(`${expectedPercentage}%`)).toBeInTheDocument();
+    });
+  });
+};
+
 // Note: Mock query functions have been moved to mocks.js for better separation of concerns
 // Import them from './mocks' if needed in your tests

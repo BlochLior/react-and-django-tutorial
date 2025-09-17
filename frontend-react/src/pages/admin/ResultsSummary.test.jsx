@@ -1,6 +1,15 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import { QueryChakraRouterWrapper } from '../../test-utils';
+import { 
+  render, 
+  cleanup,
+  TEST_SCENARIOS,
+  assertResultsSummaryLoadingState,
+  assertResultsSummarySuccessState,
+  assertResultsSummaryErrorState,
+  assertResultsSummaryEmptyState,
+  assertResultsSummaryQuestionResults,
+  QueryChakraRouterWrapper
+} from '../../test-utils';
 import ResultsSummary from './ResultsSummary';
 
 // Mock the useQuery hook to control its behavior in tests
@@ -90,117 +99,64 @@ jest.mock('../../utils/questionUtils', () => ({
   getQuestionCardColor: () => 'blue'
 }));
 
-// Mock a full data response from the /admin/summary/ endpoint
-const mockFullSummaryData = {
-  "total_questions": 1,
-  "total_votes_all_questions": 10,
-  "questions_results": [
-    {
-      "id": 1,
-      "question_text": "What is your favorite color?",
-      "total_votes": 10,
-      "choices": [
-        { "id": 1, "choice_text": "Red", "votes": 10 }
-      ]
-    }
-  ]
-};
-
-// Mock an empty data response
-const mockEmptySummaryData = {
-    "total_questions": 0,
-    "total_votes_all_questions": 0,
-    "questions_results": []
-};
 
 describe('ResultsSummary', () => {
   let mockUseQuery;
   
   beforeEach(() => {
+    cleanup();
     // Set up the mock for each test
     mockUseQuery = require('../../hooks/useQuery').default;
     mockUseQuery.mockReset();
   });
 
-  test('renders component with minimal data', async () => {
-    // Mock the useQuery hook to return minimal success state
-    mockUseQuery.mockReturnValue({
-      data: { total_questions: 0, total_votes_all_questions: 0, questions_results: [] },
-      loading: false,
-      error: null
+  const renderResultsSummary = () => {
+    return render(<ResultsSummary />, { wrapper: QueryChakraRouterWrapper });
+  };
+
+  describe('Data Loading States', () => {
+    test('renders loading state initially', () => {
+      const scenario = TEST_SCENARIOS.RESULTS_SUMMARY_LOADING;
+      mockUseQuery.mockReturnValue(scenario);
+      
+      renderResultsSummary();
+      assertResultsSummaryLoadingState();
     });
 
-    render(<ResultsSummary />, { wrapper: QueryChakraRouterWrapper });
+    test('renders error state on API fetch failure', () => {
+      const scenario = TEST_SCENARIOS.RESULTS_SUMMARY_ERROR;
+      mockUseQuery.mockReturnValue(scenario);
+      
+      renderResultsSummary();
+      assertResultsSummaryErrorState(scenario.error);
+    });
 
-    // Just check if the component renders at all
-    expect(screen.getByText('No results to display.')).toBeInTheDocument();
+    test('renders empty state when no questions exist', () => {
+      const scenario = TEST_SCENARIOS.RESULTS_SUMMARY_EMPTY;
+      mockUseQuery.mockReturnValue(scenario);
+      
+      renderResultsSummary();
+      assertResultsSummaryEmptyState();
+    });
   });
 
-  test('renders overall poll results summary with correct counts and percentages', async () => {
-    // Mock the useQuery hook to return success state
-    mockUseQuery.mockReturnValue({
-      data: mockFullSummaryData,
-      loading: false,
-      error: null
+  describe('Results Display', () => {
+    test('renders poll results summary with correct counts and percentages', () => {
+      const scenario = TEST_SCENARIOS.RESULTS_SUMMARY_SUCCESS;
+      mockUseQuery.mockReturnValue(scenario);
+      
+      renderResultsSummary();
+      assertResultsSummarySuccessState(scenario.data);
+      assertResultsSummaryQuestionResults(scenario.data.questions_results);
     });
 
-    render(<ResultsSummary />, { wrapper: QueryChakraRouterWrapper });
-
-    // The component should immediately show the results (no loading state)
-    expect(screen.getByText('Poll Results Summary')).toBeInTheDocument();
-    expect(screen.getByText('Total Questions')).toBeInTheDocument();
-    expect(screen.getByText('1')).toBeInTheDocument();
-    expect(screen.getByText('Total Votes')).toBeInTheDocument();
-    expect(screen.getByText('10')).toBeInTheDocument();
-
-    // Check the first question card - look for the question text
-    expect(screen.getByText('What is your favorite color?')).toBeInTheDocument();
-    
-    // Check choices and percentages for the first question
-    expect(screen.getByText('Red')).toBeInTheDocument();
-    expect(screen.getByText('10 votes')).toBeInTheDocument();
-    expect(screen.getByText('100.0%')).toBeInTheDocument();
-  });
-
-  test('displays a message when there are no questions', async () => {
-    // Mock the useQuery hook to return success state with empty data
-    mockUseQuery.mockReturnValue({
-      data: mockEmptySummaryData,
-      loading: false,
-      error: null
+    test('renders multiple questions with correct statistics', () => {
+      const scenario = TEST_SCENARIOS.RESULTS_SUMMARY_MULTIPLE_QUESTIONS;
+      mockUseQuery.mockReturnValue(scenario);
+      
+      renderResultsSummary();
+      assertResultsSummarySuccessState(scenario.data);
+      assertResultsSummaryQuestionResults(scenario.data.questions_results);
     });
-
-    render(<ResultsSummary />, { wrapper: QueryChakraRouterWrapper });
-
-    // The component should immediately show the no results message
-    expect(screen.getByText('No results to display.')).toBeInTheDocument();
-  });
-
-  test('handles API fetching error', async () => {
-    // Mock the useQuery hook to return an error state
-    mockUseQuery.mockReturnValue({
-      data: null,
-      loading: false,
-      error: 'Failed to fetch poll results.'
-    });
-
-    render(<ResultsSummary />, { wrapper: QueryChakraRouterWrapper });
-    
-    // The component should immediately show the error message
-    expect(screen.getByText('Failed to fetch poll results.')).toBeInTheDocument();
-  });
-
-  test('shows loading state initially', async () => {
-    // Mock the useQuery hook to return loading state
-    mockUseQuery.mockReturnValue({
-      data: null,
-      loading: true,
-      error: null
-    });
-
-    render(<ResultsSummary />, { wrapper: QueryChakraRouterWrapper });
-    
-    // The component should show the loading message
-    expect(screen.getByText('Loading results...')).toBeInTheDocument();
   });
 });
