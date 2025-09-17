@@ -236,5 +236,41 @@ export const assertAdminQuestionListCards = (questions) => {
   });
 };
 
+/**
+ * Common assertions for QuestionCard component structure
+ */
+export const assertQuestionCardElements = (question) => {
+  // Check main card structure
+  expect(screen.getByTestId('chakra-card')).toBeInTheDocument();
+  expect(screen.getByTestId('chakra-cardbody')).toBeInTheDocument();
+  
+  // Check question content
+  expect(screen.getByText(question.question_text)).toBeInTheDocument();
+  
+  // Check that all choices are rendered
+  const radioButtons = screen.getAllByTestId('chakra-radio');
+  expect(radioButtons).toHaveLength(question.choices.length);
+  
+  // Check that all choice texts are displayed
+  question.choices.forEach(choice => {
+    expect(screen.getByText(choice.choice_text)).toBeInTheDocument();
+  });
+};
+
+/**
+ * Assert that QuestionCard correctly highlights the selected choice
+ */
+export const assertQuestionCardSelectedChoice = (selectedChoiceId) => {
+  const radioGroup = screen.getByTestId('chakra-radiogroup');
+  expect(radioGroup).toHaveAttribute('data-value', String(selectedChoiceId));
+};
+
+/**
+ * Assert that QuestionCard calls onAnswerChange with correct parameters when choice is selected
+ */
+export const assertQuestionCardAnswerChange = (mockOnAnswerChange, questionId, expectedChoiceId) => {
+  expect(mockOnAnswerChange).toHaveBeenCalledWith(questionId, expectedChoiceId);
+};
+
 // Note: Mock query functions have been moved to mocks.js for better separation of concerns
 // Import them from './mocks' if needed in your tests
