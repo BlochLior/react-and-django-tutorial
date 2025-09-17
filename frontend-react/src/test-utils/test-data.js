@@ -118,4 +118,53 @@ export const TEST_SCENARIOS = {
     loading: false,
     error: 'Custom error message',
   },
+  // ErrorState specific test scenarios
+  ERROR_STATE_BASIC: {
+    message: 'Something went wrong!',
+    title: null,
+    status: 'error',
+    variant: 'subtle',
+  },
+  ERROR_STATE_WITH_TITLE: {
+    message: 'Network connection failed',
+    title: 'Connection Error',
+    status: 'error',
+    variant: 'subtle',
+  },
+  ERROR_STATE_WARNING: {
+    message: 'This is a warning message',
+    title: 'Warning',
+    status: 'warning',
+    variant: 'subtle',
+  },
+  ERROR_STATE_INFO: {
+    message: 'This is an info message',
+    title: 'Information',
+    status: 'info',
+    variant: 'solid',
+  },
+  ERROR_STATE_SUCCESS: {
+    message: 'Operation completed successfully',
+    title: 'Success',
+    status: 'success',
+    variant: 'left-accent',
+  },
+  ERROR_STATE_EMPTY: {
+    message: '',
+    title: null,
+    status: 'error',
+    variant: 'subtle',
+  },
+  ERROR_STATE_NULL: {
+    message: null,
+    title: null,
+    status: 'error',
+    variant: 'subtle',
+  },
+  ERROR_STATE_UNDEFINED: {
+    message: undefined,
+    title: null,
+    status: 'error',
+    variant: 'subtle',
+  },
 };

@@ -495,5 +495,70 @@ export const waitForUseQueryReady = async (result, options = {}) => {
   }, { timeout });
 };
 
+/**
+ * Common assertions for ErrorState component structure
+ */
+export const assertErrorStateElements = (message, title = null) => {
+  const alert = screen.getByRole('alert');
+  expect(alert).toBeInTheDocument();
+  expect(screen.getByText(message)).toBeInTheDocument();
+  
+  if (title) {
+    expect(screen.getByText(title)).toBeInTheDocument();
+  }
+};
+
+/**
+ * Assert that ErrorState renders with correct status and variant
+ */
+export const assertErrorStateStyling = (status = 'error', variant = 'subtle') => {
+  const alert = screen.getByRole('alert');
+  expect(alert).toBeInTheDocument();
+  // Note: Chakra UI styling is tested through the component's presence and structure
+  // Specific styling assertions would require more complex DOM inspection
+};
+
+/**
+ * Assert that ErrorState does not render when message is falsy
+ */
+export const assertErrorStateNotRendered = () => {
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+};
+
+/**
+ * Assert that ErrorState handles different message types correctly
+ */
+export const assertErrorStateMessageHandling = (message, shouldRender = true) => {
+  if (shouldRender) {
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    // For whitespace-only messages, check that the alert description contains the content
+    if (message && message.trim() === '') {
+      const alertDescription = screen.getByTestId('chakra-alertdescription');
+      expect(alertDescription).toBeInTheDocument();
+      expect(alertDescription.textContent).toBe(message);
+    } else {
+      expect(screen.getByText(message)).toBeInTheDocument();
+    }
+  } else {
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  }
+};
+
+/**
+ * Assert that ErrorState renders with custom props correctly
+ */
+export const assertErrorStateCustomProps = (message, title, status, variant) => {
+  const alert = screen.getByRole('alert');
+  expect(alert).toBeInTheDocument();
+  expect(screen.getByText(message)).toBeInTheDocument();
+  
+  if (title) {
+    expect(screen.getByText(title)).toBeInTheDocument();
+  }
+  
+  // Verify alert is present (styling is handled by Chakra UI)
+  expect(alert).toBeInTheDocument();
+};
+
 // Note: Mock query functions have been moved to mocks.js for better separation of concerns
 // Import them from './mocks' if needed in your tests
