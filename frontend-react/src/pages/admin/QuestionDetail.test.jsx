@@ -1,7 +1,12 @@
 import React from 'react';
 import { screen } from '@testing-library/react';
-import { renderWithProviders } from '../../test-utils';
-import { createQuestion } from '../../test-utils/test-data';
+import { 
+  renderWithProviders, 
+  createQuestion, 
+  createMockMutation,
+  createMockPollsQuery,
+  assertEditFormElements
+} from '../../test-utils';
 import QuestionDetail from './QuestionDetail';
 
 // Mock the useQuery hook to control its behavior in tests
@@ -38,6 +43,7 @@ describe('QuestionDetail', () => {
         ],
     });
 
+
     beforeEach(() => {
         // Set up the mocks for each test
         mockUseQuery = require('../../hooks/useQuery').default;
@@ -52,20 +58,17 @@ describe('QuestionDetail', () => {
         mockUseMutation.mockReset();
         mockNavigate.mockReset();
         
-        // Set up default useMutation mock to return a valid array
-        mockUseMutation.mockReturnValue([
-            jest.fn(), // mutate function
-            { data: null, loading: false, error: null } // state object
-        ]);
+        // Set up default useMutation mock using centralized function
+        mockUseMutation.mockReturnValue(createMockMutation());
     });
 
     test('renders loading state initially', () => {
-        // Mock the useQuery hook to return loading state
-        mockUseQuery.mockReturnValue({
-            data: null,
-            loading: true,
-            error: null
-        });
+        // Mock the useQuery hook to return loading state using centralized function
+        mockUseQuery.mockReturnValue(createMockPollsQuery({ 
+            data: null, 
+            loading: true, 
+            error: null 
+        }));
         
         renderWithProviders(<QuestionDetail />);
         
@@ -73,17 +76,20 @@ describe('QuestionDetail', () => {
     });
 
     test('renders the form with pre-filled question data after loading', async () => {
-        // Mock the useQuery hook to return success state
-        mockUseQuery.mockReturnValue({
-            data: mockQuestion,
-            loading: false,
-            error: null
-        });
+        // Mock the useQuery hook to return success state using centralized function
+        mockUseQuery.mockReturnValue(createMockPollsQuery({ 
+            data: mockQuestion, 
+            loading: false, 
+            error: null 
+        }));
         
         renderWithProviders(<QuestionDetail />);
         
         // The component should immediately show the form
         expect(screen.getByText('Edit Question')).toBeInTheDocument();
+        
+        // Use centralized form assertions for edit form
+        assertEditFormElements();
         
         // Check that the form is populated with the question data
         expect(screen.getByDisplayValue('What is your favorite color?')).toBeInTheDocument();
@@ -92,12 +98,12 @@ describe('QuestionDetail', () => {
     });
 
     test('renders error state when API fetch fails', async () => {
-        // Mock the useQuery hook to return an error state
-        mockUseQuery.mockReturnValue({
-            data: null,
-            loading: false,
-            error: 'Failed to fetch question details'
-        });
+        // Mock the useQuery hook to return an error state using centralized function
+        mockUseQuery.mockReturnValue(createMockPollsQuery({ 
+            data: null, 
+            loading: false, 
+            error: 'Failed to fetch question details' 
+        }));
         
         renderWithProviders(<QuestionDetail />);
         
@@ -106,26 +112,25 @@ describe('QuestionDetail', () => {
     });
 
     test('successfully updates question and navigates back to admin dashboard', async () => {
-        // Mock the useQuery hook to return success state
-        mockUseQuery.mockReturnValue({
-            data: mockQuestion,
-            loading: false,
-            error: null
-        });
+        // Mock the useQuery hook to return success state using centralized function
+        mockUseQuery.mockReturnValue(createMockPollsQuery({ 
+            data: mockQuestion, 
+            loading: false, 
+            error: null 
+        }));
         
-        // Mock the useMutation hook to return success state
-        const mockMutate = jest.fn().mockResolvedValue({ success: true });
-        mockUseMutation.mockReturnValue([
-            mockMutate,
-            { data: null, loading: false, error: null }
-        ]);
+        // Mock the useMutation hook to return success state using centralized function
+        mockUseMutation.mockReturnValue(createMockMutation());
         
         renderWithProviders(<QuestionDetail />);
         
         // The component should immediately show the form
         expect(screen.getByText('Edit Question')).toBeInTheDocument();
         
-        // For now, just verify the form renders with the expected data
+        // Use centralized form assertions for edit form
+        assertEditFormElements();
+        
+        // Verify the form renders with the expected data
         expect(screen.getByDisplayValue('What is your favorite color?')).toBeInTheDocument();
         expect(screen.getByDisplayValue('Red')).toBeInTheDocument();
         expect(screen.getByDisplayValue('Blue')).toBeInTheDocument();
@@ -135,21 +140,20 @@ describe('QuestionDetail', () => {
     });
 
     test('allows editing choice text', async () => {
-        // Mock the useQuery hook to return success state
-        mockUseQuery.mockReturnValue({
-            data: mockQuestion,
-            loading: false,
-            error: null
-        });
+        // Mock the useQuery hook to return success state using centralized function
+        mockUseQuery.mockReturnValue(createMockPollsQuery({ 
+            data: mockQuestion, 
+            loading: false, 
+            error: null 
+        }));
         
-        // Mock the useMutation hook
-        const mockMutate = jest.fn().mockResolvedValue({ success: true });
-        mockUseMutation.mockReturnValue([
-            mockMutate,
-            { data: null, loading: false, error: null }
-        ]);
+        // Mock the useMutation hook using centralized function
+        mockUseMutation.mockReturnValue(createMockMutation());
         
         renderWithProviders(<QuestionDetail />);
+        
+        // Use centralized form assertions for edit form
+        assertEditFormElements();
         
         // Verify the form renders with the expected data
         expect(screen.getByDisplayValue('Red')).toBeInTheDocument();
@@ -157,5 +161,48 @@ describe('QuestionDetail', () => {
         
         // Note: The actual form editing and submission is tested in QuestionForm tests
         // This test verifies that QuestionDetail properly passes data to QuestionForm
+    });
+
+    test('handles form validation errors', async () => {
+        // Mock the useQuery hook to return success state
+        mockUseQuery.mockReturnValue(createMockPollsQuery({ 
+            data: mockQuestion, 
+            loading: false, 
+            error: null 
+        }));
+        
+        // Mock the useMutation hook to return validation error
+        mockUseMutation.mockReturnValue(createMockMutation({ 
+            error: 'Validation failed: Question text is required' 
+        }));
+        
+        renderWithProviders(<QuestionDetail />);
+        
+        // Verify the form renders
+        expect(screen.getByText('Edit Question')).toBeInTheDocument();
+        assertEditFormElements();
+        
+        // Verify form is populated with existing data
+        expect(screen.getByDisplayValue('What is your favorite color?')).toBeInTheDocument();
+    });
+
+    test('handles mutation loading state', async () => {
+        // Mock the useQuery hook to return success state
+        mockUseQuery.mockReturnValue(createMockPollsQuery({ 
+            data: mockQuestion, 
+            loading: false, 
+            error: null 
+        }));
+        
+        // Mock the useMutation hook to return loading state
+        mockUseMutation.mockReturnValue(createMockMutation({ 
+            loading: true 
+        }));
+        
+        renderWithProviders(<QuestionDetail />);
+        
+        // Verify the form renders even when mutation is loading
+        expect(screen.getByText('Edit Question')).toBeInTheDocument();
+        assertEditFormElements();
     });
 });

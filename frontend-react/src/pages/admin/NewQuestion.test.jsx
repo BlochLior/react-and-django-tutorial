@@ -6,9 +6,7 @@ import {
   createFormData,
   fillForm,
   assertFormElements,
-  createUserEvent,
-  setupCommonMocks,
-  resetMocks
+  createUserEvent
 } from '../../test-utils';
 import NewQuestion from './NewQuestion';
 
@@ -41,9 +39,6 @@ describe('NewQuestion', () => {
   };
 
   beforeEach(() => {
-    // Set up common mocks
-    setupCommonMocks();
-    
     // Set up the mocks for each test
     mockUseMutation = require('../../hooks/useMutation').default;
     mockToast = require('@chakra-ui/react').useToast;
@@ -59,7 +54,6 @@ describe('NewQuestion', () => {
     user = createUserEvent();
     
     // Reset all mocks
-    resetMocks();
     mockUseMutation.mockReset();
     mockNavigate.mockReset();
     mockToast.mockReset();

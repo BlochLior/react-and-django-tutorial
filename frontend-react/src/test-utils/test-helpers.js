@@ -67,7 +67,7 @@ export const fillFormWithTestData = async (user, overrides = {}) => {
 /**
  * Submit a form and wait for the submission to complete
  * @param {Object} user - userEvent instance
- * @param {string} buttonText - text of the submit button
+ * @param {string|RegExp} buttonText - text of the submit button (defaults to create question)
  */
 export const submitForm = async (user, buttonText = /create question/i) => {
   const submitButton = screen.getByRole('button', { name: buttonText });
@@ -77,6 +77,14 @@ export const submitForm = async (user, buttonText = /create question/i) => {
   await waitFor(() => {
     expect(submitButton).not.toBeDisabled();
   });
+};
+
+/**
+ * Submit an edit form and wait for the submission to complete
+ * @param {Object} user - userEvent instance
+ */
+export const submitEditForm = async (user) => {
+  return submitForm(user, /save changes/i);
 };
 
 /**
@@ -134,7 +142,7 @@ export const createUserEvent = () => {
 };
 
 /**
- * Common assertions for form elements
+ * Common assertions for form elements (create form)
  */
 export const assertFormElements = () => {
   expect(screen.getByLabelText(/question text/i)).toBeInTheDocument();
@@ -144,6 +152,19 @@ export const assertFormElements = () => {
   expect(choicesElements.length).toBeGreaterThan(0);
   expect(screen.getByRole('button', { name: /add choice/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /create question/i })).toBeInTheDocument();
+};
+
+/**
+ * Common assertions for edit form elements
+ */
+export const assertEditFormElements = () => {
+  expect(screen.getByLabelText(/question text/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/publication date & time/i)).toBeInTheDocument();
+  // Use getAllByText for choices since there are multiple elements with "Choices" text
+  const choicesElements = screen.getAllByText(/choices/i);
+  expect(choicesElements.length).toBeGreaterThan(0);
+  expect(screen.getByRole('button', { name: /add choice/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
 };
 
 /**
