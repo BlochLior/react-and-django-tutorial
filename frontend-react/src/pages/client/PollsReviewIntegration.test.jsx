@@ -1,11 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import PollsContainer from './PollsContainer';
 import { useNavigate } from 'react-router-dom';
 import { pollsApi } from '../../services/apiService';
-import { QueryChakraRouterWrapper } from '../../test-utils';
-import { createQuestions } from '../../test-utils/test-data';
-import { createMockPollsQuery, createMockAllPollsQuery, createMockMutation } from '../../test-utils';
+import { 
+  QueryChakraRouterWrapper,
+  TEST_SCENARIOS,
+  createMockPollsQuery,
+  createMockAllPollsQuery,
+  createMockMutation,
+  createUserEvent,
+  waitForElement
+} from '../../test-utils';
 
 // Mock the API service to control responses
 jest.mock('../../services/apiService', () => ({
@@ -90,16 +95,10 @@ describe('Polls-Review Page Integration', () => {
   let mockUseMutation;
   let mockNavigate;
   let mockSubmitVotes;
+  let user;
   
-  const mockQuestions = createQuestions(3);
-  
-  const mockPollsResponse = {
-    results: mockQuestions,
-    page: 1,
-    total_pages: 1,
-    previous: null,
-    next: null,
-  };
+  // Use centralized test data
+  const { questions: mockQuestions } = TEST_SCENARIOS.MULTIPLE_QUESTIONS;
 
   beforeAll(() => {
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -113,6 +112,9 @@ describe('Polls-Review Page Integration', () => {
     // Set up navigation mock
     mockNavigate = jest.fn();
     useNavigate.mockReturnValue(mockNavigate);
+    
+    // Set up user event
+    user = createUserEvent();
     
     // Reset all mocks
     mockUseQuery.mockReset();
@@ -146,8 +148,6 @@ describe('Polls-Review Page Integration', () => {
 
   describe('Complete User Flow - Happy Path', () => {
     test('user can view polls, select answers, review, and submit votes successfully', async () => {
-      const user = userEvent.setup();
-      
       // Override the default mutation mock for this specific test
       mockUseMutation.mockReturnValue([
         mockSubmitVotes,
@@ -160,12 +160,9 @@ describe('Polls-Review Page Integration', () => {
         </QueryChakraRouterWrapper>
       );
 
-      // 1. Verify polls are displayed
-      await waitFor(() => {
-        expect(screen.getByTestId('question-list')).toBeInTheDocument();
-      });
-      
-      expect(screen.getByText('Question 1')).toBeInTheDocument();
+      // 1. Verify polls are displayed using centralized helper
+      await waitForElement('Question 1');
+      expect(screen.getByTestId('question-list')).toBeInTheDocument();
       expect(screen.getByText('Question 2')).toBeInTheDocument();
       expect(screen.getByText('Question 3')).toBeInTheDocument();
 
@@ -183,10 +180,8 @@ describe('Polls-Review Page Integration', () => {
       // 4. Click Review Answers to enter review mode
       await user.click(reviewButton);
 
-      // 5. Verify ReviewPage is rendered
-      await waitFor(() => {
-        expect(screen.getByText('Review Your Answers')).toBeInTheDocument();
-      });
+      // 5. Verify ReviewPage is rendered using centralized helper
+      await waitForElement('Review Your Answers');
 
       // 6. Verify answered questions are shown
       expect(screen.getByText('2 Answered')).toBeInTheDocument();
@@ -211,8 +206,6 @@ describe('Polls-Review Page Integration', () => {
 
   describe('Component State Transitions', () => {
     test('component transitions from polls view to review mode correctly', async () => {
-      const user = userEvent.setup();
-      
       render(
         <QueryChakraRouterWrapper>
           <PollsContainer />
@@ -232,18 +225,14 @@ describe('Polls-Review Page Integration', () => {
       const reviewButton = screen.getByText('Review Answers');
       await user.click(reviewButton);
 
-      // 4. Verify transition to review mode
-      await waitFor(() => {
-        expect(screen.getByText('Review Your Answers')).toBeInTheDocument();
-      });
+      // 4. Verify transition to review mode using centralized helper
+      await waitForElement('Review Your Answers');
       
       expect(screen.queryByText('Polls')).not.toBeInTheDocument();
       expect(screen.queryByTestId('question-list')).not.toBeInTheDocument();
     });
 
     test('Review Answers button behavior when no answers are selected', async () => {
-      const user = userEvent.setup();
-      
       render(
         <QueryChakraRouterWrapper>
           <PollsContainer />
@@ -264,8 +253,6 @@ describe('Polls-Review Page Integration', () => {
     });
 
     test('Review Answers button is enabled when answers are selected', async () => {
-      const user = userEvent.setup();
-      
       render(
         <QueryChakraRouterWrapper>
           <PollsContainer />
@@ -285,7 +272,7 @@ describe('Polls-Review Page Integration', () => {
 
   describe('Error Handling and Edge Cases', () => {
     test('handles API errors gracefully and shows error states', async () => {
-      // Override the default query mock for error scenario
+      // Override the default query mock for error scenario using centralized mock
       mockUseQuery.mockReturnValue(createMockPollsQuery({ 
         data: null, 
         error: 'Failed to fetch polls.' 
@@ -303,13 +290,12 @@ describe('Polls-Review Page Integration', () => {
     });
 
     test('shows submission error state when mutation has error', async () => {
-      const user = userEvent.setup();
-      
-      // Override the default mutation mock to have an error state
-      mockUseMutation.mockReturnValue([
-        jest.fn(), // mutate function (won't be called in this test)
-        { data: null, loading: false, error: 'Failed to submit votes.' }
-      ]);
+      // Override the default mutation mock to have an error state using centralized mock
+      mockUseMutation.mockReturnValue(createMockMutation({ 
+        data: null, 
+        loading: false, 
+        error: 'Failed to submit votes.' 
+      }));
       
       render(
         <QueryChakraRouterWrapper>
@@ -330,7 +316,7 @@ describe('Polls-Review Page Integration', () => {
     });
 
     test('shows loading state when loadingAllPolls is true and isReviewing is true', async () => {
-      // Override the default query mock to simulate loading state for getAllPolls
+      // Override the default query mock to simulate loading state for getAllPolls using centralized mocks
       // The component checks: if (loadingAllPolls && isReviewing)
       mockUseQuery
         .mockReturnValueOnce(createMockPollsQuery()) // Initial polls query (successful)
@@ -355,8 +341,6 @@ describe('Polls-Review Page Integration', () => {
 
   describe('Data Flow and API Integration', () => {
     test('correctly calls API functions with proper parameters', async () => {
-      const user = userEvent.setup();
-      
       // Override the default mutation mock for API integration test
       mockUseMutation.mockReturnValue([
         mockSubmitVotes,
@@ -390,16 +374,16 @@ describe('Polls-Review Page Integration', () => {
     });
 
     test('renders pagination component with paginated data', async () => {
-      // Mock paginated response
+      // Mock paginated response using centralized test data
       const paginatedResponse = {
-        ...mockPollsResponse,
+        results: mockQuestions,
         page: 2,
         total_pages: 3,
         previous: 'http://example.com/polls?page=1',
         next: 'http://example.com/polls?page=3',
       };
       
-      // Override the default query mock for pagination scenario
+      // Override the default query mock for pagination scenario using centralized mock
       mockUseQuery.mockImplementation((queryFn, deps, options) => {
         const mockResponse = createMockPollsQuery({ 
           data: paginatedResponse 
