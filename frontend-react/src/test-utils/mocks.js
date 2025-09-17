@@ -119,3 +119,52 @@ export const createMockMutation = (overrides = {}, onSuccessCallback = null) => 
   ];
 };
 
+/**
+ * Create a mock query function for useQuery testing
+ * @param {*} returnValue - value to return when query function is called
+ * @param {boolean} shouldReject - whether the function should reject
+ * @param {number} delay - delay in milliseconds before resolving/rejecting
+ * @returns {Function} mock query function
+ */
+export const createMockQueryFn = (returnValue = { id: 1, name: 'Test' }, shouldReject = false, delay = 0) => {
+  return jest.fn().mockImplementation(() => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        if (shouldReject) {
+          reject(returnValue);
+        } else {
+          resolve(returnValue);
+        }
+      }, delay);
+    });
+  });
+};
+
+/**
+ * Create a mock query function that resolves with different values on subsequent calls
+ * @param {Array} returnValues - array of values to return on each call
+ * @returns {Function} mock query function
+ */
+export const createMockQueryFnWithSequence = (returnValues) => {
+  let callCount = 0;
+  return jest.fn().mockImplementation(() => {
+    const value = returnValues[callCount % returnValues.length];
+    callCount++;
+    return Promise.resolve(value);
+  });
+};
+
+/**
+ * Create a mock query function that rejects with different errors on subsequent calls
+ * @param {Array} errors - array of errors to reject with on each call
+ * @returns {Function} mock query function
+ */
+export const createMockQueryFnWithErrorSequence = (errors) => {
+  let callCount = 0;
+  return jest.fn().mockImplementation(() => {
+    const error = errors[callCount % errors.length];
+    callCount++;
+    return Promise.reject(error);
+  });
+};
+

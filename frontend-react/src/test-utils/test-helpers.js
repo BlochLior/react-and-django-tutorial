@@ -395,5 +395,105 @@ export const assertPageTitleTypeCoercion = (renderHook, value, expectedString) =
   assertPageTitle(expectedString);
 };
 
+/**
+ * Assert that useQuery hook returns expected initial state
+ * @param {Object} result - result from renderHook
+ * @param {*} expectedData - expected data value
+ * @param {boolean} expectedLoading - expected loading state
+ * @param {string|null} expectedError - expected error value
+ */
+export const assertUseQueryInitialState = (result, expectedData, expectedLoading = false, expectedError = null) => {
+  expect(result.current.data).toEqual(expectedData);
+  expect(result.current.loading).toBe(expectedLoading);
+  expect(result.current.error).toBe(expectedError);
+  expect(typeof result.current.refetch).toBe('function');
+};
+
+/**
+ * Assert that useQuery hook handles success state correctly
+ * @param {Object} result - result from renderHook
+ * @param {*} expectedData - expected data value
+ * @param {Function} mockOnSuccess - mock onSuccess callback
+ */
+export const assertUseQuerySuccessState = (result, expectedData, mockOnSuccess = null) => {
+  expect(result.current.data).toEqual(expectedData);
+  expect(result.current.loading).toBe(false);
+  expect(result.current.error).toBe(null);
+  
+  if (mockOnSuccess) {
+    expect(mockOnSuccess).toHaveBeenCalledWith(expectedData);
+  }
+};
+
+/**
+ * Assert that useQuery hook handles error state correctly
+ * @param {Object} result - result from renderHook
+ * @param {string} expectedError - expected error message
+ * @param {Function} mockOnError - mock onError callback
+ */
+export const assertUseQueryErrorState = (result, expectedError, mockOnError = null) => {
+  expect(result.current.data).toBe(undefined);
+  expect(result.current.loading).toBe(false);
+  expect(result.current.error).toBe(expectedError);
+  
+  if (mockOnError) {
+    expect(mockOnError).toHaveBeenCalledWith(expectedError);
+  }
+};
+
+/**
+ * Assert that useQuery hook handles custom error processing correctly
+ * @param {Object} result - result from renderHook
+ * @param {string} expectedError - expected processed error message
+ * @param {string} customErrorMessage - custom error message used in options
+ */
+export const assertUseQueryCustomErrorProcessing = (result, expectedError, customErrorMessage) => {
+  expect(result.current.error).toBe(expectedError);
+  // Verify that custom error message was used in processing
+  expect(result.current.error).not.toBe('Failed to fetch data'); // default message
+};
+
+/**
+ * Assert that useQuery hook handles dependency changes correctly
+ * @param {Function} mockQueryFn - mock query function
+ * @param {number} expectedCallCount - expected number of calls
+ * @param {Array} expectedDeps - expected dependencies passed to query function
+ */
+export const assertUseQueryDependencyHandling = (mockQueryFn, expectedCallCount, expectedDeps = []) => {
+  expect(mockQueryFn).toHaveBeenCalledTimes(expectedCallCount);
+  if (expectedDeps.length > 0) {
+    expect(mockQueryFn).toHaveBeenLastCalledWith(...expectedDeps);
+  }
+};
+
+/**
+ * Assert that useQuery hook handles enabled state correctly
+ * @param {Function} mockQueryFn - mock query function
+ * @param {boolean} shouldBeCalled - whether query function should have been called
+ */
+export const assertUseQueryEnabledState = (mockQueryFn, shouldBeCalled) => {
+  if (shouldBeCalled) {
+    expect(mockQueryFn).toHaveBeenCalled();
+  } else {
+    expect(mockQueryFn).not.toHaveBeenCalled();
+  }
+};
+
+
+/**
+ * Wait for useQuery hook to complete and return stable state
+ * @param {Object} result - result from renderHook
+ * @param {Object} options - options for waiting
+ * @param {number} options.timeout - timeout in milliseconds
+ */
+export const waitForUseQueryReady = async (result, options = {}) => {
+  const { timeout = 1000 } = options;
+  
+  await waitFor(() => {
+    expect(result.current).toBeDefined();
+    expect(result.current.loading).toBe(false);
+  }, { timeout });
+};
+
 // Note: Mock query functions have been moved to mocks.js for better separation of concerns
 // Import them from './mocks' if needed in your tests

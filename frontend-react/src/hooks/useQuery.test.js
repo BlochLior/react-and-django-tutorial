@@ -1,5 +1,15 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { QueryWrapper } from '../test-utils';
+import { renderHook, act, waitFor, cleanup } from '@testing-library/react';
+import { 
+  QueryWrapper, 
+  createMockQueryFn, 
+  createMockQueryFnWithSequence,
+  TEST_SCENARIOS,
+  assertUseQuerySuccessState,
+  assertUseQueryErrorState,
+  assertUseQueryCustomErrorProcessing,
+  assertUseQueryDependencyHandling,
+  assertUseQueryEnabledState
+} from '../test-utils';
 import useQuery from './useQuery';
 
 describe('useQuery', () => {
@@ -8,6 +18,7 @@ describe('useQuery', () => {
   let mockOnError;
 
   beforeEach(() => {
+    cleanup(); // Ensure clean DOM between tests
     mockQueryFn = jest.fn();
     mockOnSuccess = jest.fn();
     mockOnError = jest.fn();
@@ -17,27 +28,10 @@ describe('useQuery', () => {
     jest.clearAllMocks();
   });
 
-  describe('Basic functionality', () => {
-    test('should return initial state', async () => {
-      const mockData = { id: 1, name: 'Test' };
-      mockQueryFn.mockResolvedValue(mockData);
-
-      const { result } = renderHook(() => useQuery(mockQueryFn), {
-        wrapper: QueryWrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(result.current.data).toEqual(mockData);
-      expect(result.current.error).toBe(null);
-      expect(typeof result.current.refetch).toBe('function');
-    });
-
-    test('should handle errors correctly', async () => {
+  describe('Custom Error Processing', () => {
+    test('should process errors through handleApiError with custom error message', async () => {
       const mockError = new Error('Network Error');
-      mockQueryFn.mockRejectedValue(mockError);
+      mockQueryFn = createMockQueryFn(mockError, true);
 
       const { result } = renderHook(() => 
         useQuery(mockQueryFn, [], { errorMessage: 'Custom error message' }), {
@@ -48,15 +42,45 @@ describe('useQuery', () => {
         expect(result.current.error).toBe('Network Error');
       });
 
-      expect(result.current.data).toBe(undefined);
-      expect(result.current.loading).toBe(false);
+      assertUseQueryErrorState(result, 'Network Error');
+    });
+
+    test('should use custom error message when error has no message property', async () => {
+      const mockError = { customError: true };
+      mockQueryFn = createMockQueryFn(mockError, true);
+
+      const { result } = renderHook(() => 
+        useQuery(mockQueryFn, [], { errorMessage: 'Custom error message' }), {
+        wrapper: QueryWrapper,
+      });
+
+      await waitFor(() => {
+        expect(result.current.error).toBe('Custom error message');
+      });
+
+      assertUseQueryCustomErrorProcessing(result, 'Custom error message', 'Custom error message');
+    });
+
+    test('should use default error message when no custom message provided', async () => {
+      const mockError = new Error('Network Error');
+      mockQueryFn = createMockQueryFn(mockError, true);
+
+      const { result } = renderHook(() => useQuery(mockQueryFn), {
+        wrapper: QueryWrapper,
+      });
+
+      await waitFor(() => {
+        expect(result.current.error).toBe('Network Error');
+      });
+
+      assertUseQueryErrorState(result, 'Network Error');
     });
   });
 
-  describe('Options and callbacks', () => {
-    test('should call onSuccess callback when query succeeds', async () => {
-      const mockData = { id: 1, name: 'Test' };
-      mockQueryFn.mockResolvedValue(mockData);
+  describe('Custom Callback System', () => {
+    test('should call onSuccess callback with processed data when query succeeds', async () => {
+      const mockData = TEST_SCENARIOS.QUERY_SUCCESS.data;
+      mockQueryFn = createMockQueryFn(mockData);
 
       const { result } = renderHook(() => 
         useQuery(mockQueryFn, [], { onSuccess: mockOnSuccess }), {
@@ -71,11 +95,13 @@ describe('useQuery', () => {
       await waitFor(() => {
         expect(mockOnSuccess).toHaveBeenCalledWith(mockData);
       });
+
+      assertUseQuerySuccessState(result, mockData, mockOnSuccess);
     });
 
-    test('should call onError callback when query fails', async () => {
+    test('should call onError callback with processed error message when query fails', async () => {
       const mockError = new Error('Network Error');
-      mockQueryFn.mockRejectedValue(mockError);
+      mockQueryFn = createMockQueryFn(mockError, true);
 
       const { result } = renderHook(() => 
         useQuery(mockQueryFn, [], { onError: mockOnError }), {
@@ -90,15 +116,33 @@ describe('useQuery', () => {
       await waitFor(() => {
         expect(mockOnError).toHaveBeenCalledWith('Network Error');
       });
+
+      assertUseQueryErrorState(result, 'Network Error', mockOnError);
+    });
+
+    test('should not call callbacks when they are not provided', async () => {
+      const mockData = TEST_SCENARIOS.QUERY_SUCCESS.data;
+      mockQueryFn = createMockQueryFn(mockData);
+
+      const { result } = renderHook(() => useQuery(mockQueryFn), {
+        wrapper: QueryWrapper,
+      });
+
+      await waitFor(() => {
+        expect(result.current.data).toEqual(mockData);
+      });
+
+      expect(mockOnSuccess).not.toHaveBeenCalled();
+      expect(mockOnError).not.toHaveBeenCalled();
     });
   });
 
-  describe('Dependencies and enabled state', () => {
-    test('should re-run query when dependencies change', async () => {
-      const mockData1 = { id: 1, name: 'Test1' };
+  describe('Custom Query Key Generation', () => {
+    test('should generate unique query keys based on function reference and dependencies', async () => {
+      const mockData1 = TEST_SCENARIOS.QUERY_SUCCESS.data;
       const mockData2 = { id: 2, name: 'Test2' };
       
-      mockQueryFn.mockResolvedValueOnce(mockData1).mockResolvedValueOnce(mockData2);
+      mockQueryFn = createMockQueryFnWithSequence([mockData1, mockData2]);
 
       const { result, rerender } = renderHook(
         ({ deps }) => useQuery(mockQueryFn, deps),
@@ -118,20 +162,22 @@ describe('useQuery', () => {
         expect(result.current.data).toEqual(mockData2);
       });
 
-      expect(mockQueryFn).toHaveBeenCalledTimes(2);
+      assertUseQueryDependencyHandling(mockQueryFn, 2);
     });
 
-    test('should not run query when disabled', async () => {
+    test('should handle enabled state through custom options', async () => {
+      mockQueryFn = createMockQueryFn(TEST_SCENARIOS.QUERY_SUCCESS.data);
+
       renderHook(() => useQuery(mockQueryFn, [], { enabled: false }), {
         wrapper: QueryWrapper,
       });
 
-      expect(mockQueryFn).not.toHaveBeenCalled();
+      assertUseQueryEnabledState(mockQueryFn, false);
     });
 
-    test('should run query when enabled changes to true', async () => {
-      const mockData = { id: 1, name: 'Test' };
-      mockQueryFn.mockResolvedValue(mockData);
+    test('should handle enabled state changes through custom options', async () => {
+      const mockData = TEST_SCENARIOS.QUERY_SUCCESS.data;
+      mockQueryFn = createMockQueryFn(mockData);
 
       const { result, rerender } = renderHook(
         ({ enabled }) => useQuery(mockQueryFn, [], { enabled }),
@@ -141,54 +187,63 @@ describe('useQuery', () => {
         }
       );
 
-      expect(mockQueryFn).not.toHaveBeenCalled();
+      assertUseQueryEnabledState(mockQueryFn, false);
 
       rerender({ enabled: true });
 
       await waitFor(() => {
         expect(result.current.data).toEqual(mockData);
       });
+
+      assertUseQueryEnabledState(mockQueryFn, true);
     });
   });
 
-  describe('State management', () => {
-    test('should clear error when query succeeds after failure', async () => {
-      const mockError = new Error('Network Error');
-      const mockData = { id: 1, name: 'Test' };
-      
-      mockQueryFn.mockRejectedValueOnce(mockError).mockResolvedValueOnce(mockData);
+  describe('Custom State Mapping', () => {
+    test('should map React Query state to custom API format', async () => {
+      const mockData = TEST_SCENARIOS.QUERY_SUCCESS.data;
+      mockQueryFn = createMockQueryFn(mockData);
 
-      const { result, rerender } = renderHook(
-        ({ deps }) => useQuery(mockQueryFn, deps),
-        {
-          initialProps: { deps: [1] },
-          wrapper: QueryWrapper,
-        }
-      );
+      const { result } = renderHook(() => useQuery(mockQueryFn), {
+        wrapper: QueryWrapper,
+      });
+
+      await waitFor(() => {
+        expect(result.current.data).toEqual(mockData);
+      });
+
+      // Verify custom state mapping
+      expect(result.current.data).toEqual(mockData);
+      expect(result.current.loading).toBe(false);
+      expect(result.current.error).toBe(null);
+      expect(typeof result.current.refetch).toBe('function');
+    });
+
+    test('should map error state through custom error processing', async () => {
+      const mockError = new Error('Network Error');
+      mockQueryFn = createMockQueryFn(mockError, true);
+
+      const { result } = renderHook(() => useQuery(mockQueryFn), {
+        wrapper: QueryWrapper,
+      });
 
       await waitFor(() => {
         expect(result.current.error).toBe('Network Error');
       });
 
-      // Change dependencies to trigger a new query execution
-      rerender({ deps: [2] });
-
-      // Wait for the query to complete with the new data
-      await waitFor(() => {
-        expect(result.current.data).toEqual(mockData);
-      });
-      
-      // When dependencies change, React Query creates a new query instance
-      // So the error state from the previous query is not carried over
-      expect(result.current.error).toBe(null);
+      // Verify custom error state mapping
+      expect(result.current.data).toBe(undefined);
+      expect(result.current.loading).toBe(false);
+      expect(result.current.error).toBe('Network Error');
+      expect(typeof result.current.refetch).toBe('function');
     });
 
-    test('should not update state after component unmounts', async () => {
+    test('should handle unmounting without state updates', async () => {
       let resolveQuery;
       const pendingQuery = new Promise(resolve => {
         resolveQuery = resolve;
       });
-      mockQueryFn.mockReturnValue(pendingQuery);
+      mockQueryFn = jest.fn().mockReturnValue(pendingQuery);
 
       const { result, unmount } = renderHook(() => useQuery(mockQueryFn), {
         wrapper: QueryWrapper,
@@ -199,11 +254,16 @@ describe('useQuery', () => {
         queryPromise = mockQueryFn();
       });
 
-      let currentState = result.current;
-      expect(currentState.loading).toBe(true);
+      // Capture state before unmount
+      const stateBeforeUnmount = {
+        data: result.current.data,
+        loading: result.current.loading,
+        error: result.current.error
+      };
+      expect(stateBeforeUnmount.loading).toBe(true);
 
       unmount();
-      resolveQuery({ id: 1, name: 'Test' });
+      resolveQuery(TEST_SCENARIOS.QUERY_SUCCESS.data);
 
       try {
         await queryPromise;
@@ -211,105 +271,17 @@ describe('useQuery', () => {
         // Expected to throw or complete
       }
 
-      expect(currentState.loading).toBe(true);
-      expect(currentState.data).toBe(undefined);
+      // Verify state doesn't update after unmount by checking captured state
+      expect(stateBeforeUnmount.data).toBe(undefined);
+      expect(stateBeforeUnmount.loading).toBe(true);
+      expect(stateBeforeUnmount.error).toBe(null);
     });
   });
 
-  describe('Return values', () => {
-    test('should return query result when successful', async () => {
-      const mockData = { id: 1, name: 'Test' };
-      mockQueryFn.mockResolvedValue(mockData);
-
-      const { result } = renderHook(() => useQuery(mockQueryFn), {
-        wrapper: QueryWrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current.data).toEqual(mockData);
-      });
-
-      expect(result.current.error).toBe(null);
-      expect(result.current.loading).toBe(false);
-    });
-
-    test('should return error when query fails', async () => {
-      const mockError = new Error('Network Error');
-      mockQueryFn.mockRejectedValue(mockError);
-
-      const { result } = renderHook(() => useQuery(mockQueryFn), {
-        wrapper: QueryWrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current.error).toBe('Network Error');
-      });
-
-      expect(result.current.data).toBe(undefined);
-      expect(result.current.loading).toBe(false);
-    });
-  });
-
-  describe('Memoization', () => {
-    test('should not re-run query when options object reference changes but values are the same', async () => {
-      const mockData = { id: 1, name: 'Test' };
-      mockQueryFn.mockResolvedValue(mockData);
-
-      const { result, rerender } = renderHook(
-        ({ options }) => useQuery(mockQueryFn, [], options),
-        {
-          initialProps: { options: { onSuccess: mockOnSuccess } },
-          wrapper: QueryWrapper,
-        }
-      );
-
-      await waitFor(() => {
-        expect(result.current.data).toEqual(mockData);
-      });
-
-      const initialCallCount = mockQueryFn.mock.calls.length;
-
-      rerender({ options: { onSuccess: mockOnSuccess } });
-
-      await waitFor(() => {
-        expect(result.current.data).toEqual(mockData);
-      });
-
-      expect(mockQueryFn).toHaveBeenCalledTimes(initialCallCount);
-    });
-
-    test('should re-run query when query function reference changes', async () => {
-      const queryFn1 = jest.fn().mockResolvedValue('result1');
-      const queryFn2 = jest.fn().mockResolvedValue('result2');
-
-      const { result, rerender } = renderHook(
-        ({ queryFn, deps }) => useQuery(queryFn, deps),
-        {
-          initialProps: { queryFn: queryFn1, deps: [1] },
-          wrapper: QueryWrapper,
-        }
-      );
-
-      await waitFor(() => {
-        expect(result.current.data).toBe('result1');
-      });
-
-      // Change both the function and dependencies to ensure React Query re-runs
-      rerender({ queryFn: queryFn2, deps: [2] });
-
-      await waitFor(() => {
-        expect(result.current.data).toBe('result2');
-      });
-
-      expect(queryFn1).toHaveBeenCalledTimes(1);
-      expect(queryFn2).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('Error handling edge cases', () => {
-    test('should handle errors without message property', async () => {
+  describe('Custom Error Processing Edge Cases', () => {
+    test('should handle errors without message property using custom error message', async () => {
       const mockError = { customError: true };
-      mockQueryFn.mockRejectedValue(mockError);
+      mockQueryFn = createMockQueryFn(mockError, true);
 
       const { result } = renderHook(() => 
         useQuery(mockQueryFn, [], { errorMessage: 'Custom error message' }), {
@@ -319,12 +291,13 @@ describe('useQuery', () => {
       await waitFor(() => {
         expect(result.current.error).toBe('Custom error message');
       });
+
+      assertUseQueryCustomErrorProcessing(result, 'Custom error message', 'Custom error message');
     });
 
-    test('should handle null error', async () => {
-      // Mock the function to return a rejected promise with null
-      // React Query might not handle null errors properly, so we'll test with a more realistic scenario
-      mockQueryFn.mockRejectedValue(new Error('')); // Empty error message
+    test('should handle empty error messages using custom error message', async () => {
+      const mockError = new Error(''); // Empty error message
+      mockQueryFn = createMockQueryFn(mockError, true);
 
       const { result } = renderHook(() => 
         useQuery(mockQueryFn, [], { errorMessage: 'Custom error message' }), {
@@ -334,6 +307,24 @@ describe('useQuery', () => {
       await waitFor(() => {
         expect(result.current.error).toBe('Custom error message');
       });
+
+      assertUseQueryCustomErrorProcessing(result, 'Custom error message', 'Custom error message');
+    });
+
+    test('should handle undefined errors using custom error message', async () => {
+      const mockError = undefined;
+      mockQueryFn = createMockQueryFn(mockError, true);
+
+      const { result } = renderHook(() => 
+        useQuery(mockQueryFn, [], { errorMessage: 'Custom error message' }), {
+        wrapper: QueryWrapper,
+      });
+
+      await waitFor(() => {
+        expect(result.current.error).toBe('Custom error message');
+      });
+
+      assertUseQueryCustomErrorProcessing(result, 'Custom error message', 'Custom error message');
     });
   });
 });

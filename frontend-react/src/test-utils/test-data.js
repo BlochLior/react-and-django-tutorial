@@ -97,4 +97,25 @@ export const TEST_SCENARIOS = {
     loading: true,
     variables: createMutationVariables(),
   },
+  // useQuery specific test scenarios
+  QUERY_SUCCESS: {
+    data: { id: 1, name: 'Test Query Data' },
+    loading: false,
+    error: null,
+  },
+  QUERY_ERROR: {
+    data: undefined,
+    loading: false,
+    error: 'Network Error',
+  },
+  QUERY_LOADING: {
+    data: undefined,
+    loading: true,
+    error: null,
+  },
+  QUERY_CUSTOM_ERROR: {
+    data: undefined,
+    loading: false,
+    error: 'Custom error message',
+  },
 };
