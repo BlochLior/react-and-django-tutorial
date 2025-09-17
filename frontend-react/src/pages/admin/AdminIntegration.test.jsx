@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../../services/apiService';
 import { QueryChakraRouterWrapper } from '../../test-utils';
 import { createQuestions } from '../../test-utils/test-data';
-import { createMockPollsQuery } from '../../test-utils/test-helpers';
+import { createMockPollsQuery } from '../../test-utils';
 
 // Mock the API service to control responses
 jest.mock('../../services/apiService', () => ({

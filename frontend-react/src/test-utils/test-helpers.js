@@ -1,12 +1,13 @@
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor } from '@testing-library/react';
+import { createFormData } from './test-data';
 
 // Common test helper functions
 
 /**
  * Fill out a form with the provided data
  * @param {Object} user - userEvent instance
- * @param {Object} formData - form data to fill
+ * @param {Object} formData - form data to fill (can be from createFormData or custom object)
  * @param {Object} options - additional options
  */
 export const fillForm = async (user, formData, options = {}) => {
@@ -41,7 +42,7 @@ export const fillForm = async (user, formData, options = {}) => {
     
     for (let i = 0; i < Math.min(choices.length, choiceInputs.length); i++) {
       const choice = choices[i];
-      // Handle both choice_text format and direct string format
+      // Handle both choice_text format and direct string format for backward compatibility
       const choiceText = choice.choice_text || choice;
       // Skip empty choices to avoid typing empty strings
       if (choiceText && typeof choiceText === 'string' && choiceText.trim()) {
@@ -51,6 +52,16 @@ export const fillForm = async (user, formData, options = {}) => {
       }
     }
   }
+};
+
+/**
+ * Fill out a form using standardized test data
+ * @param {Object} user - userEvent instance
+ * @param {Object} overrides - data to override in the default form data
+ */
+export const fillFormWithTestData = async (user, overrides = {}) => {
+  const formData = createFormData(overrides);
+  await fillForm(user, formData);
 };
 
 /**
@@ -144,86 +155,5 @@ export const assertPaginationElements = (currentPage, totalPages) => {
   expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
 };
 
-/**
- * Mock helper functions for common test scenarios
- */
-
-/**
- * Create a mock polls query response
- * @param {Object} overrides - properties to override
- * @param {Function} onSuccessCallback - callback to trigger when query succeeds
- * @returns {Object} mock query response
- */
-export const createMockPollsQuery = (overrides = {}, onSuccessCallback = null) => {
-  const { createQuestions } = require('./test-data');
-  const mockQuestions = createQuestions(3);
-  
-  const defaultResponse = {
-    data: {
-      results: mockQuestions,
-      page: 1,
-      total_pages: 1,
-      previous: null,
-      next: null,
-    },
-    loading: false,
-    error: null,
-    refetch: jest.fn().mockResolvedValue({ data: { results: mockQuestions } }),
-  };
-  
-  const response = { ...defaultResponse, ...overrides };
-  
-  // If an onSuccess callback was provided and we have data, call it
-  if (onSuccessCallback && response.data && !response.loading && !response.error) {
-    // Simulate the onSuccess callback being called with the data
-    setTimeout(() => onSuccessCallback(response.data), 0);
-  }
-  
-  return response;
-};
-
-/**
- * Create a mock all polls query response
- * @param {Object} overrides - properties to override
- * @returns {Object} mock query response
- */
-export const createMockAllPollsQuery = (overrides = {}) => {
-  const { createQuestions } = require('./test-data');
-  const mockQuestions = createQuestions(3);
-  
-  const defaultResponse = {
-    data: { results: mockQuestions },
-    loading: false,
-    error: null,
-    refetch: jest.fn().mockResolvedValue({ data: { results: mockQuestions } }),
-  };
-  
-  return { ...defaultResponse, ...overrides };
-};
-
-/**
- * Create a mock mutation response
- * @param {Object} overrides - properties to override
- * @param {Function} onSuccessCallback - callback to trigger on successful mutation
- * @returns {Array} mock mutation response [mutateFn, state]
- */
-export const createMockMutation = (overrides = {}, onSuccessCallback = null) => {
-  const defaultState = { data: null, loading: false, error: null };
-  
-  // Create a mutate function that can trigger the onSuccess callback
-  const mutateFn = jest.fn().mockImplementation(async (variables) => {
-    const result = { success: true };
-    
-    // If an onSuccess callback was provided, call it
-    if (onSuccessCallback) {
-      onSuccessCallback(result, variables);
-    }
-    
-    return result;
-  });
-  
-  return [
-    mutateFn,
-    { ...defaultState, ...overrides }
-  ];
-};
+// Note: Mock query functions have been moved to mocks.js for better separation of concerns
+// Import them from './mocks' if needed in your tests

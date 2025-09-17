@@ -87,3 +87,20 @@ export { QueryWrapper, QueryRouterWrapper, QueryChakraRouterWrapper, createTestQ
 
 // Also export individual functions for convenience
 export * from '@testing-library/react';
+
+// Export mock functions for easy access
+export { 
+  createMockPollsQuery, 
+  createMockAllPollsQuery, 
+  createMockMutation,
+  mockLocalStorage,
+  mockSessionStorage,
+  resetMocks,
+  setupCommonMocks
+} from './mocks';
+
+// Export test helpers
+export * from './test-helpers';
+
+// Export test data factories
+export * from './test-data';

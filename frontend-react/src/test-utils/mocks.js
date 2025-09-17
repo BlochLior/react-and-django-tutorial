@@ -1,4 +1,5 @@
 // Centralized mocks for consistent testing across the application
+import { createQuestions } from './test-data';
 
 // Mock for localStorage
 export const mockLocalStorage = {
@@ -35,5 +36,86 @@ export const setupCommonMocks = () => {
     value: mockSessionStorage,
     writable: true,
   });
+};
+
+// Mock query response generators
+/**
+ * Create a mock polls query response
+ * @param {Object} overrides - properties to override
+ * @param {Function} onSuccessCallback - callback to trigger when query succeeds
+ * @param {number} questionCount - number of questions to generate (default: 3)
+ * @returns {Object} mock query response
+ */
+export const createMockPollsQuery = (overrides = {}, onSuccessCallback = null, questionCount = 3) => {
+  const mockQuestions = createQuestions(questionCount);
+  
+  const defaultResponse = {
+    data: {
+      results: mockQuestions,
+      page: 1,
+      total_pages: 1,
+      previous: null,
+      next: null,
+    },
+    loading: false,
+    error: null,
+    refetch: jest.fn().mockResolvedValue({ data: { results: mockQuestions } }),
+  };
+  
+  const response = { ...defaultResponse, ...overrides };
+  
+  // If an onSuccess callback was provided and we have data, call it
+  if (onSuccessCallback && response.data && !response.loading && !response.error) {
+    // Simulate the onSuccess callback being called with the data
+    setTimeout(() => onSuccessCallback(response.data), 0);
+  }
+  
+  return response;
+};
+
+/**
+ * Create a mock all polls query response
+ * @param {Object} overrides - properties to override
+ * @param {number} questionCount - number of questions to generate (default: 3)
+ * @returns {Object} mock query response
+ */
+export const createMockAllPollsQuery = (overrides = {}, questionCount = 3) => {
+  const mockQuestions = createQuestions(questionCount);
+  
+  const defaultResponse = {
+    data: { results: mockQuestions },
+    loading: false,
+    error: null,
+    refetch: jest.fn().mockResolvedValue({ data: { results: mockQuestions } }),
+  };
+  
+  return { ...defaultResponse, ...overrides };
+};
+
+/**
+ * Create a mock mutation response
+ * @param {Object} overrides - properties to override
+ * @param {Function} onSuccessCallback - callback to trigger on successful mutation
+ * @returns {Array} mock mutation response [mutateFn, state]
+ */
+export const createMockMutation = (overrides = {}, onSuccessCallback = null) => {
+  const defaultState = { data: null, loading: false, error: null };
+  
+  // Create a mutate function that can trigger the onSuccess callback
+  const mutateFn = jest.fn().mockImplementation(async (variables) => {
+    const result = { success: true };
+    
+    // If an onSuccess callback was provided, call it
+    if (onSuccessCallback) {
+      onSuccessCallback(result, variables);
+    }
+    
+    return result;
+  });
+  
+  return [
+    mutateFn,
+    { ...defaultState, ...overrides }
+  ];
 };
 

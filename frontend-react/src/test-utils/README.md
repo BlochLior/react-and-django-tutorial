@@ -154,7 +154,7 @@ import {
   createMockPollsQuery, 
   createMockAllPollsQuery, 
   createMockMutation 
-} from '../test-utils/test-helpers';
+} from '../test-utils';
 
 // Set up centralized mocks in beforeEach
 beforeEach(() => {

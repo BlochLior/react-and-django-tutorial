@@ -278,11 +278,7 @@ const createButtonMock = () => {
   return MockButton;
 };
 
-// Mock react-icons/fa icons
-const FaVoteYea = () => React.createElement('span', { 'data-testid': 'icon-fa-vote-yea' }, '🗳️');
-const FaClock = () => React.createElement('span', { 'data-testid': 'icon-fa-clock' }, '⏰');
-const FaQuestionCircle = () => React.createElement('span', { 'data-testid': 'icon-fa-question-circle' }, '❓');
-const FaExclamationTriangle = () => React.createElement('span', { 'data-testid': 'icon-fa-exclamation-triangle' }, '⚠️');
+// Note: react-icons/fa icons are mocked in icon-mock.js via Jest module mapping
 
 // Mock ChakraProvider
 const ChakraProvider = ({ children }) => {
@@ -462,9 +458,4 @@ module.exports = {
   useColorMode,
   useColorModeValue,
   createToaster,
-  // Export icon mocks
-  FaVoteYea,
-  FaClock,
-  FaQuestionCircle,
-  FaExclamationTriangle,
 };
