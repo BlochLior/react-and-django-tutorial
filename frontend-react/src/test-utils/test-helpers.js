@@ -1,6 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor } from '@testing-library/react';
 import { createFormData } from './test-data';
+import usePageTitle from '../hooks/usePageTitle';
 
 // Common test helper functions
 
@@ -333,6 +334,65 @@ export const waitForUseMutationReady = async (result) => {
   await waitFor(() => {
     expect(Array.isArray(result.current)).toBe(true);
   });
+};
+
+/**
+ * Assert that document title is set to expected value
+ * @param {string} expectedTitle - expected title value
+ */
+export const assertPageTitle = (expectedTitle) => {
+  expect(document.title).toBe(expectedTitle);
+};
+
+/**
+ * Assert that usePageTitle hook sets and restores title correctly
+ * @param {Function} renderHook - renderHook function from @testing-library/react
+ * @param {string} testTitle - title to set during test
+ * @param {string} originalTitle - original title to restore to
+ */
+export const assertPageTitleRestoration = (renderHook, testTitle, originalTitle) => {
+  const { unmount } = renderHook(() => usePageTitle(testTitle));
+  
+  // Title should be set during hook execution
+  assertPageTitle(testTitle);
+  
+  // Title should be restored after unmount
+  unmount();
+  assertPageTitle(originalTitle);
+};
+
+/**
+ * Assert that multiple usePageTitle hooks handle title precedence correctly
+ * @param {Function} renderHook - renderHook function from @testing-library/react
+ * @param {string} title1 - first title
+ * @param {string} title2 - second title
+ * @param {string} originalTitle - original title to restore to
+ */
+export const assertMultiplePageTitleHandling = (renderHook, title1, title2, originalTitle) => {
+  const { unmount: unmount1 } = renderHook(() => usePageTitle(title1));
+  const { unmount: unmount2 } = renderHook(() => usePageTitle(title2));
+  
+  // Last hook should win
+  assertPageTitle(title2);
+  
+  // Unmount second hook - should restore to first title
+  unmount2();
+  assertPageTitle(title1);
+  
+  // Unmount first hook - should restore to original title
+  unmount1();
+  assertPageTitle(originalTitle);
+};
+
+/**
+ * Assert that usePageTitle handles non-string values correctly
+ * @param {Function} renderHook - renderHook function from @testing-library/react
+ * @param {*} value - non-string value to test
+ * @param {string} expectedString - expected string representation
+ */
+export const assertPageTitleTypeCoercion = (renderHook, value, expectedString) => {
+  renderHook(() => usePageTitle(value));
+  assertPageTitle(expectedString);
 };
 
 // Note: Mock query functions have been moved to mocks.js for better separation of concerns
