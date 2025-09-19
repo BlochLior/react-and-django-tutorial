@@ -33,7 +33,7 @@ if not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS: list[str] = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS: list[str] = ['127.0.0.1', 'localhost', 'react-and-django-tutorial.onrender.com']
 
 
 # Application definition
