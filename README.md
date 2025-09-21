@@ -80,6 +80,23 @@ npm start
 
 **Frontend will be available at:** `http://localhost:3000/`
 
+## 🚀 Production Deployment
+
+For production deployment instructions, see **[DEPLOYMENT.md](DEPLOYMENT.md)** - a comprehensive guide covering:
+
+- **Free-tier cloud deployment** (Render + Vercel + Railway)
+- **Environment configuration** for all services
+- **Database setup** and migration
+- **CORS configuration** and troubleshooting
+- **Cost breakdown** ($0/month total)
+- **Security best practices**
+- **Scaling considerations**
+
+**Quick deployment stack:**
+```
+React Frontend (Vercel) → Django Backend (Render) → MySQL Database (Railway)
+```
+
 ## 🎨 Frontend (React)
 
 ### **Status: 100% Complete** 🎉
@@ -208,6 +225,7 @@ uv run coverage html              # Generate HTML coverage report
 
 ### **Project Documentation**
 - **`README.md`**: This file: Comprehensive project documentation index
+- **`DEPLOYMENT.md`**: Complete deployment guide for production
 - **`frontend-react/docs/`**: Frontend-specific documentation
 - **`backend-django/README.md`**: Backend-specific documentation
 
