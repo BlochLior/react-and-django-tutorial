@@ -31,15 +31,27 @@ if not SECRET_KEY:
     raise ImproperlyConfigured("SECRET_KEY is not found in environment variables")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS: list[str] = ['127.0.0.1', 'localhost', 'react-and-django-tutorial.onrender.com']
+# Environment-based configuration
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+
+if ENVIRONMENT == 'production':
+    ALLOWED_HOSTS = [
+        'react-and-django-tutorial.onrender.com',
+        '127.0.0.1',  # For health checks
+    ]
+else:
+    ALLOWED_HOSTS = [
+        '127.0.0.1',
+        'localhost',
+        '0.0.0.0',  # For Docker if needed
+    ]
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'polls.apps.PollsConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -48,7 +60,46 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'polls.apps.PollsConfig',
 ]
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+SITE_ID = 1
+
+# Google OAuth settings - environment specific
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        }
+    }
+}
+
+# OAuth credentials - will be set via environment variables
+GOOGLE_OAUTH2_CLIENT_ID = os.getenv('GOOGLE_OAUTH2_CLIENT_ID')
+GOOGLE_OAUTH2_SECRET = os.getenv('GOOGLE_OAUTH2_SECRET')
+
+# Allauth settings
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+# Skip email verification for OAuth
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_LOGIN_ON_GET = True
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -57,6 +108,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -83,16 +135,31 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
-        conn_max_age=600,
-    ),
-}
+# Environment-based database configuration
+# Use MySQL for both dev and prod to maintain consistency
 
-# Add a check to ensure DATABASE_URL is actually loaded for non-testing environments
-if not os.environ.get('DATABASE_URL'):
-    raise ImproperlyConfigured("DATABASE_URL is not found in environment variables. Ensure .env is loaded or DATABASE_URL is set.")
+DATABASE_URL = os.getenv('DATABASE_URL')
+if not DATABASE_URL:
+    if ENVIRONMENT == 'production':
+        raise ImproperlyConfigured("DATABASE_URL is required for production environment")
+    else:
+        # Development fallback to SQLite if no DATABASE_URL provided
+        print("WARNING: No DATABASE_URL found. Using SQLite for development.")
+        print("For best compatibility, set up local MySQL with DATABASE_URL")
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
+else:
+    # Use MySQL for both dev and prod (Railway MySQL)
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+        ),
+    }
 
 
 # Password validation
@@ -151,11 +218,17 @@ if not TESTING:
         'debug_toolbar.middleware.DebugToolbarMiddleware',
     ]
 
-CORS_ALLOWED_ORIGINS = [
-    "https://react-and-django-tutorial.vercel.app",
-]
-CORS_ALLOW_ALL_ORIGINS = False
-
-# For development, allow all origins
-if DEBUG:
+# CORS configuration based on environment
+if ENVIRONMENT == 'production':
+    CORS_ALLOWED_ORIGINS = [
+        "https://react-and-django-tutorial.vercel.app",
+    ]
+    CORS_ALLOW_ALL_ORIGINS = False
+else:
+    # Development - allow all origins for easier testing
     CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+    ]

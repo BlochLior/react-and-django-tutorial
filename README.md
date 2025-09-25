@@ -31,7 +31,7 @@ react-and-django-tutorial/
 
 - **Node.js**: 18+ (for React frontend)
 - **Python**: 3.12+ (for Django backend)
-- **MariaDB**: 10.0+ (database)
+- **Docker**: Latest version (for local MySQL database)
 - **Package Managers**: npm (Node.js) and uv (Python)
 
 ### 1. Clone the Repository
@@ -41,7 +41,28 @@ git clone https://github.com/BlochLior/react-and-django-tutorial
 cd react-and-django-tutorial
 ```
 
-### 2. Backend Setup (Django)
+### 2. Database Setup (Docker MySQL)
+
+**Start the MySQL database container:**
+
+```bash
+# Start Docker MySQL container
+docker run --name polls-mysql \
+  -e MYSQL_ROOT_PASSWORD=password \
+  -e MYSQL_DATABASE=polls_db \
+  -p 3306:3306 \
+  -d mysql:8.0
+
+# Verify container is running
+docker ps | grep polls-mysql
+```
+
+**Alternative: Use Docker Compose (if you have a docker-compose.yml):**
+```bash
+docker-compose up -d mysql
+```
+
+### 3. Backend Setup (Django)
 
 ```bash
 cd backend-django
@@ -53,12 +74,16 @@ uv venv
 uv sync
 
 # Environment configuration
-cp .env.example .env  # Create and configure .env file
+# Create .env file with local database settings
+cat > .env << EOF
+DATABASE_URL=mysql://root:password@localhost:3306/polls_db
+SECRET_KEY=your-local-secret-key-here
+DEBUG=True
+EOF
 
 # Database setup
-
-python manage.py migrate
-python manage.py createsuperuser  # Optional
+uv run manage.py migrate
+uv run manage.py createsuperuser  # Optional
 
 # Start backend server
 uv run manage.py runserver
@@ -66,7 +91,7 @@ uv run manage.py runserver
 
 **Backend will be available at:** `http://localhost:8000/`
 
-### 3. Frontend Setup (React)
+### 4. Frontend Setup (React)
 
 ```bash
 cd frontend-react
@@ -79,6 +104,50 @@ npm start
 ```
 
 **Frontend will be available at:** `http://localhost:3000/`
+
+## 🐳 Local Development Notes
+
+### Database Management
+
+**Stop the database container:**
+```bash
+docker stop polls-mysql
+```
+
+**Start the database container:**
+```bash
+docker start polls-mysql
+```
+
+**Remove the database container (if needed):**
+```bash
+docker rm polls-mysql
+```
+
+### Troubleshooting Local Development
+
+**If you get database connection errors:**
+1. **Check if Docker is running**: `docker ps`
+2. **Verify MySQL container is up**: `docker ps | grep polls-mysql`
+3. **Check container logs**: `docker logs polls-mysql`
+4. **Test database connection**: `mysql -h localhost -P 3306 -u root -p`
+
+**If you get "Can't connect to MySQL server" errors:**
+- Make sure Docker Desktop is running
+- Verify the MySQL container is started: `docker start polls-mysql`
+- Check if port 3306 is available: `netstat -an | grep 3306`
+
+### Alternative: SQLite for Development
+
+If you prefer not to use Docker, you can use SQLite for local development (although this would make a need to change MySQL specificities in the code SQLite-compatible):
+
+```bash
+# In backend-django/.env
+# Comment out or remove DATABASE_URL line
+# DATABASE_URL=mysql://root:password@localhost:3306/polls_db
+
+# Django will automatically use SQLite if no DATABASE_URL is provided
+```
 
 ## 🚀 Production Deployment
 
@@ -226,6 +295,7 @@ uv run coverage html              # Generate HTML coverage report
 ### **Project Documentation**
 - **`README.md`**: This file: Comprehensive project documentation index
 - **`DEPLOYMENT.md`**: Complete deployment guide for production
+- **`AUTHENTICATION_PLAN.md`**: Google OAuth authentication implementation plan
 - **`frontend-react/docs/`**: Frontend-specific documentation
 - **`backend-django/README.md`**: Backend-specific documentation
 
@@ -253,6 +323,17 @@ uv run coverage html              # Generate HTML coverage report
 - ✅ **Code Quality**: Automated linting and security scanning
 - ✅ **API Design**: RESTful API with proper validation
 - ✅ **Production Ready**: Scalable and secure backend
+
+## 🚧 Upcoming Features
+
+### **Authentication & Access Control**
+- 🔄 **Google OAuth Integration**: User authentication with Google accounts
+- 🔄 **Role-Based Access Control**: Guest, Client, and Admin user types
+- 🔄 **User Vote Tracking**: Individual user vote management and history
+- 🔄 **Admin Dashboard**: Enhanced admin interface with user statistics
+- 🔄 **Conditional Results**: Filtered results based on user access level
+
+**Implementation Plan**: See **[AUTHENTICATION_PLAN.md](AUTHENTICATION_PLAN.md)** for detailed roadmap.
 
 ## 📞 Support & Resources
 

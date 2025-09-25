@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: polling_mysql_dev
+    environment:
+      MYSQL_ROOT_PASSWORD: dev_root_2024_secure
+      MYSQL_DATABASE: polling_dev
+      MYSQL_USER: polling_user
+      MYSQL_PASSWORD: dev_polling_2024_secure
+    ports:
+      - "0.0.0.0:3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+
+volumes:
+  mysql_data:
