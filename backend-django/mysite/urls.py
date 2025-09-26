@@ -22,6 +22,9 @@ from debug_toolbar.toolbar import debug_toolbar_urls
 urlpatterns = [
     path("polls/", include("polls.urls")),
     path("admin/", include("polls.admin_urls")),
+    path("auth/", include("polls.auth_urls")),
+    # Django-allauth OAuth URLs
+    path("accounts/", include("allauth.urls")), # allauth is from the django-allauth package, not a local dir
     
 ]
 

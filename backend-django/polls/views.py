@@ -3,14 +3,17 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 
 from pydantic import ValidationError
 
-from polls.models import Question, Choice
+from polls.models import Question, Choice, UserProfile, UserVote
 from polls.schemas import (
     NewQuestionSchema, 
     PollSubmissionSchema, 
@@ -96,9 +99,11 @@ def client_poll_detail(_request: Request, pk):
 
 @csrf_exempt
 @api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def vote(request: Request):
     """
-    Handles a POST request to update vote counts for a poll
+    Handles a POST request to update vote counts for a poll.
+    Now tracks user votes to prevent duplicate voting and enable user-specific features.
     """
     try:
         # Print the raw data for debugging
@@ -123,6 +128,20 @@ def vote(request: Request):
         if choice.question_id != question_id:
             return Response({"error": "Choice does not belong to this question"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Remove existing vote if user already voted on this question
+        existing_vote = UserVote.objects.filter(user=request.user, question=choice.question).first()
+        if existing_vote:
+            # Decrement the old choice's vote count
+            old_choice = existing_vote.choice
+            old_choice.votes -= 1
+            old_choice.save()
+            # Remove the old vote record
+            existing_vote.delete()
+        
+        # Record new vote
+        UserVote.objects.create(user=request.user, question=choice.question, choice=choice)
+        
+        # Update vote count
         choice.votes += 1
         choice.save()
 
@@ -273,6 +292,95 @@ def admin_results_summary(request: Request):
     serialized_summary = ResultsSummarySchema.model_validate(list(questions))
     
     return Response(serialized_summary.model_dump(), status=status.HTTP_200_OK)
+
+
+# --- Authentication Views ---
+@api_view(['GET'])
+def user_info(request: Request):
+    """
+    Get current user information for the home page.
+    Returns user details, admin status, and voting status.
+    """
+    if request.user.is_authenticated:
+        try:
+            profile = request.user.userprofile
+            return Response({
+                'authenticated': True,
+                'email': profile.google_email,
+                'name': profile.google_name,
+                'is_admin': profile.is_admin,
+                'has_voted': has_user_voted(request.user)
+            })
+        except UserProfile.DoesNotExist:
+            # Fallback for users without profiles (shouldn't happen in OAuth flow)
+            return Response({
+                'authenticated': True,
+                'email': request.user.email,
+                'name': request.user.username,
+                'is_admin': False,
+                'has_voted': False
+            })
+    return Response({'authenticated': False})
+
+
+def has_user_voted(user):
+    """
+    Check if user has voted on any poll.
+    This is used by the user_info endpoint and home page logic.
+    """
+    return UserVote.objects.filter(user=user).exists()
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_stats(request: Request):
+    """
+    Get admin statistics for the admin dashboard.
+    Returns comprehensive statistics including voter counts and hidden questions.
+    """
+    try:
+        profile = request.user.userprofile
+        if not profile.is_admin:
+            return Response({'error': 'Admin access required'}, status=403)
+    except UserProfile.DoesNotExist:
+        return Response({'error': 'Admin access required'}, status=403)
+    
+    # Calculate statistics
+    total_voters = UserVote.objects.values('user').distinct().count()
+    total_votes = UserVote.objects.count()
+    total_questions = Question.objects.count()
+    
+    # Hidden questions breakdown
+    unpublished_questions = Question.objects.filter(pub_date__gt=timezone.now()).count()
+    choiceless_questions = Question.objects.filter(choice__isnull=True).distinct().count()
+    unpublished_choiceless = Question.objects.filter(
+        pub_date__gt=timezone.now(),
+        choice__isnull=True
+    ).distinct().count()
+    
+    return Response({
+        'total_voters': total_voters,
+        'total_votes': total_votes,
+        'total_questions': total_questions,
+        'hidden_questions': {
+            'unpublished': unpublished_questions,
+            'choiceless': choiceless_questions,
+            'unpublished_choiceless': unpublished_choiceless,
+            'total': unpublished_questions + choiceless_questions + unpublished_choiceless
+        }
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request: Request):
+    """
+    Handle user logout.
+    This endpoint is called by the frontend before redirecting to Django's logout URL.
+    """
+    # Django's session-based logout will be handled by the frontend redirect
+    # This endpoint just confirms the logout request
+    return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
     
     
     

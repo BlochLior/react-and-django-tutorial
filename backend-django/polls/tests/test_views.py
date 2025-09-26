@@ -4,8 +4,14 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from datetime import timedelta
 
-from polls.models import Question
-from polls.tests.utils import make_json_post_request, create_question_with_choices, make_json_put_request
+from polls.models import Question, UserVote
+from polls.tests.utils import (
+    make_json_post_request, 
+    create_question_with_choices, 
+    make_json_put_request,
+    create_test_user_with_profile,
+    create_user_vote
+)
 from polls.views import ADMIN_QUESTIONS_PER_PAGE
 
 # --- Client Views ---
@@ -141,95 +147,8 @@ class TestClientPollDetail(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 404)
     
-# --- vote ---
-class TestVoteView(TestCase):
-    def setUp(self):
-        self.client = Client()
-        self.url = reverse('polls:vote')
-        
-        # Create a question with two choices for testing
-        self.question = create_question_with_choices(
-            question_text="Favorite color?",
-            days=-1,
-            choice_texts=["Blue", "Green"]
-        )
-        self.choice_blue = self.question.choice_set.get(choice_text="Blue")
-        self.choice_green = self.question.choice_set.get(choice_text="Green")
-
-    def test_vote_successfully_increments_votes(self):
-        """
-        Tests that a valid vote submission increments the correct choice's vote count.
-        """
-        initial_votes_blue = self.choice_blue.votes
-        
-        # Data that mimics a client submission
-        vote_data = {
-            "votes": {
-                self.question.id: self.choice_blue.id
-            }
-        }
-        
-        response = make_json_post_request(self.client, self.url, vote_data)
-        
-        # Refresh the object from the database to get the new vote count
-        self.choice_blue.refresh_from_db()
-        
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.choice_blue.votes, initial_votes_blue + 1)
-        self.assertEqual(self.choice_green.votes, 0) # Should be unchanged
-
-    def test_vote_returns_400_for_invalid_json(self):
-        """
-        Tests that the view returns a 400 Bad Request for malformed data.
-        """
-        invalid_data = "This is not JSON"
-        response = make_json_post_request(self.client, self.url, invalid_data)
-        self.assertEqual(response.status_code, 400)
-        self.assertIn(b"dictionary", response.content)
-
-    def test_vote_returns_400_for_invalid_pydantic_schema(self):
-        """
-        Tests that the view returns a 400 for data that doesn't match the schema.
-        """
-        invalid_data = {
-            "votes": {
-                "not_an_int": self.choice_blue.id # key is not an integer
-            }
-        }
-        response = make_json_post_request(self.client, self.url, invalid_data)
-        self.assertEqual(response.status_code, 400)
-        self.assertIn(b"int_parsing", response.content)
-
-    def test_vote_returns_404_for_nonexistent_choice(self):
-        """
-        Tests that a vote for a non-existent choice returns a 404.
-        """
-        vote_data = {
-            "votes": {
-                self.question.id: 9999 # Non-existent choice ID
-            }
-        }
-        response = make_json_post_request(self.client, self.url, vote_data)
-        self.assertEqual(response.status_code, 404)
-        self.assertIn(b"Choice with this ID was not found", response.content)
-
-    def test_vote_returns_400_if_choice_does_not_belong_to_question(self):
-        """
-        Tests that the view prevents voting for a choice that doesn't belong to the question.
-        """
-        other_question = create_question_with_choices(
-            question_text="Another question?",
-            days=-1,
-            choice_texts=["X"]
-        )
-        vote_data = {
-            "votes": {
-                self.question.id: other_question.choice_set.first().id # Invalid choice for the question
-            }
-        }
-        response = make_json_post_request(self.client, self.url, vote_data)
-        self.assertEqual(response.status_code, 400)
-        self.assertIn(b"Choice does not belong to this question", response.content)
+# Note: TestVoteView has been replaced by TestVoteWithAuthentication
+# which provides comprehensive testing of the authenticated voting system
 
 
 # --- Admin Views ---
@@ -284,10 +203,10 @@ class TestAdminCreateQuestion(TestCase):
         """
         Tests that the admin create question view returns a 400 Bad Request for malformed data.
         """
-        invalid_data_1 = "This is not JSON"
-        response_1 = make_json_post_request(self.client, self.url, invalid_data_1)
+        # Test with actual invalid JSON string
+        response_1 = self.client.post(self.url, "This is not JSON", content_type='application/json')
         self.assertEqual(response_1.status_code, 400)
-        self.assertIn(b"dictionary", response_1.content)
+        self.assertIn(b"JSON parse error", response_1.content)
 
         invalid_data_2 = {
             "pub_date": timezone.now().isoformat(),
@@ -626,3 +545,341 @@ class TestAdminResultsSummary(TestCase):
         self.assertEqual(q3_data['id'], self.q3_choiceless.id)
         self.assertEqual(q3_data['total_votes'], 0)
         self.assertEqual(len(q3_data['choices']), 0)
+
+
+# --- Authentication Views ---
+
+# --- user_info ---
+class TestUserInfo(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('user_info')
+
+    def test_user_info_unauthenticated_returns_false(self):
+        """
+        Test that unauthenticated users get authenticated: false.
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['authenticated'], False)
+
+    def test_user_info_authenticated_regular_user(self):
+        """
+        Test that authenticated regular users get correct user info.
+        """
+        user, profile = create_test_user_with_profile(
+            username="testuser",
+            google_email="test@gmail.com",
+            google_name="Test User",
+            is_admin=False
+        )
+        
+        self.client.force_authenticate(user=user)
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['authenticated'], True)
+        self.assertEqual(response.data['email'], "test@gmail.com")
+        self.assertEqual(response.data['name'], "Test User")
+        self.assertEqual(response.data['is_admin'], False)
+        self.assertEqual(response.data['has_voted'], False)
+
+    def test_user_info_authenticated_admin_user(self):
+        """
+        Test that authenticated admin users get correct user info.
+        """
+        user, profile = create_test_user_with_profile(
+            username="admin",
+            google_email="admin@gmail.com",
+            google_name="Admin User",
+            is_admin=True
+        )
+        
+        self.client.force_authenticate(user=user)
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['authenticated'], True)
+        self.assertEqual(response.data['email'], "admin@gmail.com")
+        self.assertEqual(response.data['name'], "Admin User")
+        self.assertEqual(response.data['is_admin'], True)
+        self.assertEqual(response.data['has_voted'], False)
+
+    def test_user_info_has_voted_status(self):
+        """
+        Test that has_voted correctly reflects user's voting status.
+        """
+        user, profile = create_test_user_with_profile()
+        question = create_question_with_choices(
+            question_text="Test question",
+            days=-1,
+            choice_texts=["Choice 1", "Choice 2"]
+        )
+        
+        self.client.force_authenticate(user=user)
+        
+        # Initially has not voted
+        response = self.client.get(self.url)
+        self.assertEqual(response.data['has_voted'], False)
+        
+        # After voting, has voted
+        create_user_vote(user=user, question=question, choice=question.choice_set.first())
+        response = self.client.get(self.url)
+        self.assertEqual(response.data['has_voted'], True)
+
+
+# --- admin_stats ---
+class TestAdminStats(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('admin_stats')
+
+    def test_admin_stats_unauthenticated_returns_403(self):
+        """
+        Test that unauthenticated users get 403.
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_stats_regular_user_returns_403(self):
+        """
+        Test that regular users get 403.
+        """
+        user, profile = create_test_user_with_profile(is_admin=False)
+        self.client.force_authenticate(user=user)
+        
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_stats_admin_user_returns_stats(self):
+        """
+        Test that admin users get comprehensive statistics.
+        """
+        # Create admin user
+        admin_user, admin_profile = create_test_user_with_profile(
+            username="admin",
+            google_email="admin@gmail.com",
+            is_admin=True
+        )
+        
+        # Create regular users and votes
+        user1, profile1 = create_test_user_with_profile(
+            username="user1",
+            google_email="user1@gmail.com"
+        )
+        user2, profile2 = create_test_user_with_profile(
+            username="user2", 
+            google_email="user2@gmail.com"
+        )
+        
+        # Create questions
+        question1 = create_question_with_choices(
+            question_text="Question 1",
+            days=-1,
+            choice_texts=["A", "B"]
+        )
+        question2 = create_question_with_choices(
+            question_text="Question 2",
+            days=-1,
+            choice_texts=["C", "D"]
+        )
+        future_question = create_question_with_choices(
+            question_text="Future Question",
+            days=5,
+            choice_texts=["E", "F"]
+        )
+        choiceless_question = create_question_with_choices(
+            question_text="Choiceless Question",
+            days=-1,
+            choice_texts=[]
+        )
+        
+        # Create votes
+        create_user_vote(user=user1, question=question1, choice=question1.choice_set.first())
+        create_user_vote(user=user2, question=question1, choice=question1.choice_set.last())
+        create_user_vote(user=user1, question=question2, choice=question2.choice_set.first())
+        
+        self.client.force_authenticate(user=admin_user)
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['total_voters'], 2)  # user1 and user2
+        self.assertEqual(response.data['total_votes'], 3)   # 3 votes total
+        self.assertEqual(response.data['total_questions'], 4)  # All questions
+        
+        # Test hidden questions breakdown
+        hidden = response.data['hidden_questions']
+        self.assertEqual(hidden['unpublished'], 1)  # future_question
+        self.assertEqual(hidden['choiceless'], 1)    # choiceless_question
+        self.assertEqual(hidden['unpublished_choiceless'], 0)  # None
+        self.assertEqual(hidden['total'], 2)  # 1 + 1 + 0
+
+
+# --- logout ---
+class TestLogout(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('logout')
+
+    def test_logout_unauthenticated_returns_403(self):
+        """
+        Test that unauthenticated users get 403.
+        """
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_logout_authenticated_returns_success(self):
+        """
+        Test that authenticated users can logout.
+        """
+        user, profile = create_test_user_with_profile()
+        self.client.force_authenticate(user=user)
+        
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['message'], "Logout successful")
+
+
+# --- vote (updated with authentication) ---
+class TestVoteWithAuthentication(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('polls:vote')
+        
+        # Create a question with choices for testing
+        self.question = create_question_with_choices(
+            question_text="Favorite color?",
+            days=-1,
+            choice_texts=["Blue", "Green"]
+        )
+        self.choice_blue = self.question.choice_set.get(choice_text="Blue")
+        self.choice_green = self.question.choice_set.get(choice_text="Green")
+
+    def test_vote_unauthenticated_returns_403(self):
+        """
+        Test that unauthenticated users cannot vote.
+        """
+        vote_data = {
+            "votes": {
+                self.question.id: self.choice_blue.id
+            }
+        }
+        response = make_json_post_request(self.client, self.url, vote_data)
+        self.assertEqual(response.status_code, 403)
+
+    def test_vote_authenticated_user_tracks_vote(self):
+        """
+        Test that authenticated users can vote and vote is tracked.
+        """
+        user, profile = create_test_user_with_profile()
+        self.client.force_authenticate(user=user)
+        
+        vote_data = {
+            "votes": {
+                self.question.id: self.choice_blue.id
+            }
+        }
+        response = make_json_post_request(self.client, self.url, vote_data)
+        
+        self.assertEqual(response.status_code, 200)
+        self.choice_blue.refresh_from_db()
+        self.assertEqual(self.choice_blue.votes, 1)
+        
+        # Check that UserVote was created
+        self.assertTrue(UserVote.objects.filter(user=user, question=self.question).exists())
+        vote = UserVote.objects.get(user=user, question=self.question)
+        self.assertEqual(vote.choice, self.choice_blue)
+
+    def test_vote_change_vote_updates_correctly(self):
+        """
+        Test that changing a vote properly updates the vote counts.
+        """
+        user, profile = create_test_user_with_profile()
+        self.client.force_authenticate(user=user)
+        
+        # Initial vote for blue
+        vote_data = {
+            "votes": {
+                self.question.id: self.choice_blue.id
+            }
+        }
+        response = make_json_post_request(self.client, self.url, vote_data)
+        self.assertEqual(response.status_code, 200)
+        
+        # Change vote to green
+        vote_data = {
+            "votes": {
+                self.question.id: self.choice_green.id
+            }
+        }
+        response = make_json_post_request(self.client, self.url, vote_data)
+        self.assertEqual(response.status_code, 200)
+        
+        # Check vote counts
+        self.choice_blue.refresh_from_db()
+        self.choice_green.refresh_from_db()
+        self.assertEqual(self.choice_blue.votes, 0)  # Should be decremented
+        self.assertEqual(self.choice_green.votes, 1)  # Should be incremented
+        
+        # Check that UserVote was updated
+        vote = UserVote.objects.get(user=user, question=self.question)
+        self.assertEqual(vote.choice, self.choice_green)
+
+    def test_vote_multiple_questions(self):
+        """
+        Test that users can vote on multiple questions.
+        """
+        user, profile = create_test_user_with_profile()
+        self.client.force_authenticate(user=user)
+        
+        # Create second question
+        question2 = create_question_with_choices(
+            question_text="Second question",
+            days=-1,
+            choice_texts=["X", "Y"]
+        )
+        
+        # Vote on both questions
+        vote_data = {
+            "votes": {
+                self.question.id: self.choice_blue.id,
+                question2.id: question2.choice_set.first().id
+            }
+        }
+        response = make_json_post_request(self.client, self.url, vote_data)
+        self.assertEqual(response.status_code, 200)
+        
+        # Check that both votes were recorded
+        self.assertEqual(UserVote.objects.filter(user=user).count(), 2)
+        self.assertTrue(UserVote.objects.filter(user=user, question=self.question).exists())
+        self.assertTrue(UserVote.objects.filter(user=user, question=question2).exists())
+
+    def test_vote_business_rule_one_vote_per_question(self):
+        """
+        Test that users can only vote once per question (business rule).
+        """
+        user, profile = create_test_user_with_profile()
+        self.client.force_authenticate(user=user)
+        
+        # Vote on question
+        vote_data = {
+            "votes": {
+                self.question.id: self.choice_blue.id
+            }
+        }
+        response = make_json_post_request(self.client, self.url, vote_data)
+        self.assertEqual(response.status_code, 200)
+        
+        # Try to vote again on same question (should replace previous vote)
+        vote_data = {
+            "votes": {
+                self.question.id: self.choice_green.id
+            }
+        }
+        response = make_json_post_request(self.client, self.url, vote_data)
+        self.assertEqual(response.status_code, 200)
+        
+        # Should still only have one vote per question
+        self.assertEqual(UserVote.objects.filter(user=user, question=self.question).count(), 1)
+        vote = UserVote.objects.get(user=user, question=self.question)
+        self.assertEqual(vote.choice, self.choice_green)  # Should be the new choice

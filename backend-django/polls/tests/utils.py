@@ -2,7 +2,8 @@ from datetime import timedelta
 from django.utils import timezone
 from django.test import Client
 from django.http import HttpResponse
-from polls.models import Question, Choice
+from django.contrib.auth.models import User
+from polls.models import Question, Choice, UserProfile, UserVote
 import json
 
 def create_question(question_text: str, days: int=0) -> Question:
@@ -40,7 +41,7 @@ def prepare_question_results_for_validation(question):
         "choice_set": list(question.choice_set.all())
     }
 
-def make_json_post_request(client: Client, url: str, data: dict) -> HttpResponse:
+def make_json_post_request(client: Client, url: str, data: dict):
     """
     Makes a POST request to the given URL with the given data as JSON.
     """
@@ -52,7 +53,7 @@ def make_json_post_request(client: Client, url: str, data: dict) -> HttpResponse
     
     return response
 
-def make_json_put_request(client: Client, url: str, data: dict) -> HttpResponse:
+def make_json_put_request(client: Client, url: str, data: dict):
     """
     Makes a PUT request to the given URL with the given data as JSON.
     """
@@ -63,4 +64,78 @@ def make_json_put_request(client: Client, url: str, data: dict) -> HttpResponse:
         response.data = {}
     
     return response
+
+
+def create_test_user(username: str = "testuser", email: str = "test@example.com", password: str = "testpass123") -> User:
+    """
+    Create a test user with the given username, email, and password.
+    """
+    return User.objects.create_user(username=username, email=email, password=password)
+
+
+def create_user_profile(user: User, google_email: str, google_name: str = "", is_admin: bool = False) -> UserProfile:
+    """
+    Create a UserProfile for the given user with Google OAuth data.
+    """
+    return UserProfile.objects.create(
+        user=user,
+        google_email=google_email,
+        google_name=google_name,
+        is_admin=is_admin
+    )
+
+
+def create_test_user_with_profile(
+    username: str = "testuser", 
+    email: str = "test@example.com", 
+    google_email: str = "test@gmail.com",
+    google_name: str = "Test User",
+    is_admin: bool = False
+) -> tuple[User, UserProfile]:
+    """
+    Create a test user with a UserProfile in one call.
+    Returns both the User and UserProfile objects.
+    """
+    user = create_test_user(username=username, email=email)
+    profile = create_user_profile(user=user, google_email=google_email, google_name=google_name, is_admin=is_admin)
+    return user, profile
+
+
+def create_user_vote(user: User, question: Question, choice: Choice) -> UserVote:
+    """
+    Create a UserVote record for the given user, question, and choice.
+    """
+    return UserVote.objects.create(user=user, question=question, choice=choice)
+
+
+def create_complete_voting_scenario() -> dict:
+    """
+    Create a complete voting scenario with a user, question, choices, and vote.
+    Useful for integration tests.
+    Returns a dictionary with all created objects.
+    """
+    # Create user and profile
+    user, profile = create_test_user_with_profile()
+    
+    # Create question with choices
+    question = create_question_with_choices(
+        question_text="Test question for voting",
+        days=-1,  # Published in the past
+        choice_texts=["Choice 1", "Choice 2", "Choice 3"]
+    )
+    
+    # Get the first choice
+    choice = question.choice_set.first()
+    
+    # Create vote
+    vote = create_user_vote(user=user, question=question, choice=choice)
+    
+    return {
+        'user': user,
+        'profile': profile,
+        'question': question,
+        'choice': choice,
+        'vote': vote,
+        'all_choices': list(question.choice_set.all())
+    }
     
