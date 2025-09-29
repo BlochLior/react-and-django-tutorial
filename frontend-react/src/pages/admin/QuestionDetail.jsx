@@ -19,6 +19,7 @@ import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
 import useQuery from '../../hooks/useQuery';
 import useMutation from '../../hooks/useMutation';
+import { useQueryClient } from '@tanstack/react-query';
 
 const QuestionDetail = () => {
     const { questionId } = useParams();
@@ -26,6 +27,7 @@ const QuestionDetail = () => {
     const toast = useToast();
     const { isOpen, onOpen, onClose } = useDisclosure();
     const cancelRef = React.useRef();
+    const queryClient = useQueryClient();
 
     // Create stable query function to prevent infinite loops
     const getQuestionQuery = useCallback(async () => {
@@ -63,6 +65,8 @@ const QuestionDetail = () => {
                     duration: 3000,
                     isClosable: true,
                 });
+                // Invalidate all queries to refresh data
+                queryClient.invalidateQueries({ queryKey: ['query'] });
                 navigate('/admin/');
             }
         }
@@ -81,6 +85,8 @@ const QuestionDetail = () => {
                     duration: 3000,
                     isClosable: true,
                 });
+                // Invalidate all queries to refresh data
+                queryClient.invalidateQueries({ queryKey: ['query'] });
                 navigate('/admin/');
             }
         }

@@ -101,6 +101,33 @@ ACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_LOGIN_ON_GET = True
 
+# Redirect URLs for OAuth - environment aware
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+LOGIN_REDIRECT_URL = f'{FRONTEND_URL}/'
+LOGOUT_REDIRECT_URL = f'{FRONTEND_URL}/'
+ACCOUNT_LOGOUT_REDIRECT_URL = f'{FRONTEND_URL}/'
+SOCIALACCOUNT_LOGIN_ON_GET = True
+
+# Session configuration for OAuth
+SESSION_COOKIE_HTTPONLY = False  # Allow JavaScript access for debugging
+SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+SESSION_COOKIE_SAMESITE = 'Lax'  # Allow cross-site requests
+SESSION_COOKIE_DOMAIN = None  # Use default domain (localhost)
+
+# Additional session settings for cross-domain OAuth
+SESSION_COOKIE_PATH = '/'
+SESSION_SAVE_EVERY_REQUEST = True  # Save session on every request
+
+# CSRF configuration for OAuth
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = False
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -245,3 +272,6 @@ else:
         "http://127.0.0.1:3000",
         "http://localhost:3001",
     ]
+
+# CORS credentials configuration
+CORS_ALLOW_CREDENTIALS = True

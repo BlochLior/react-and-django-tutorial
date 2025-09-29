@@ -36,7 +36,7 @@ function SuccessPage() {
         const timer = setInterval(() => {
             setCountdown(prev => {
                 if (prev <= 1) {
-                    navigate('/polls');
+                    navigate('/');
                     return 0;
                 }
                 return prev - 1;
@@ -102,7 +102,7 @@ function SuccessPage() {
 
                                     <VStack spacing={2}>
                                         <Text fontSize="sm" color="gray.500" textAlign="center">
-                                            You will be automatically redirected to the polls page in:
+                                            You will be automatically redirected to the home page in:
                                         </Text>
                                         <Badge 
                                             colorScheme="blue" 

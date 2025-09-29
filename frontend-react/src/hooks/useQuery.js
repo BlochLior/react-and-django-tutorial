@@ -24,18 +24,20 @@ const useQuery = (
     enabled = true,
     onSuccess = null,
     onError = null,
-    errorMessage = 'Failed to fetch data'
+    errorMessage = 'Failed to fetch data',
+    refetchOnMount = false
   } = {}
 ) => {
   // Create a unique key for React Query based on the function and dependencies
   // Include function reference to trigger re-runs when function changes
   // Use a more reliable approach by including function name or a hash
-  const queryKey = ['query', queryFn.name || queryFn.toString().slice(0, 50), dependencies.length, ...dependencies];
+  const queryKey = ['query', queryFn.name || 'anonymous', ...dependencies];
   
   const query = useReactQuery({
     queryKey,
     queryFn,
     enabled,
+    refetchOnMount,
   });
 
   // Use useEffect to trigger callbacks when data or error changes

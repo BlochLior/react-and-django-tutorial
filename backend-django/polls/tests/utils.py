@@ -95,9 +95,21 @@ def create_test_user_with_profile(
     """
     Create a test user with a UserProfile in one call.
     Returns both the User and UserProfile objects.
+    Note: UserProfile is created automatically by signals, so we just update it.
     """
     user = create_test_user(username=username, email=email)
-    profile = create_user_profile(user=user, google_email=google_email, google_name=google_name, is_admin=is_admin)
+    
+    # Get the profile created by the signal and update it
+    # Use update_or_create to ensure we get the right values
+    profile, created = UserProfile.objects.update_or_create(
+        user=user,
+        defaults={
+            'google_email': google_email,
+            'google_name': google_name,
+            'is_admin': is_admin
+        }
+    )
+    
     return user, profile
 
 

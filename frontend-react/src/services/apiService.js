@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base API configuration
-const API_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+const API_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
 
 // Create API instance with default config
 const api = axios.create({
@@ -9,6 +9,22 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,  // Include cookies in requests for authentication
+});
+
+// Add CSRF token to all requests
+api.interceptors.request.use((config) => {
+  // Get CSRF token from cookies
+  const csrfToken = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('csrftoken='))
+    ?.split('=')[1];
+  
+  if (csrfToken) {
+    config.headers['X-CSRFToken'] = csrfToken;
+  }
+  
+  return config;
 });
 
 /**
@@ -29,7 +45,46 @@ export const pollsApi = {
   
   // Submit votes
   submitVotes: async (votes) => {
-    const response = await api.post('/polls/vote/', { votes });
+    console.log('API Service: Submitting votes:', votes);
+    console.log('API Service: Making POST request to /polls/vote/');
+    console.log('API Service: With credentials:', true);
+    console.log('API Service: Document cookies:', document.cookie);
+    
+    try {
+      const response = await api.post('/polls/vote/', { votes });
+      console.log('API Service: Vote response received:', response);
+      return response.data;
+    } catch (error) {
+      console.log('API Service: Vote error occurred:', error);
+      console.log('API Service: Error response:', error.response?.data);
+      throw error;
+    }
+  },
+
+  // Authentication methods
+  getUserInfo: async () => {
+    console.log('API Service: Making request to /auth/user-info/');
+    console.log('API Service: Base URL:', API_URL);
+    console.log('API Service: With credentials:', true);
+    
+    try {
+      const response = await api.get('/auth/user-info/');
+      console.log('API Service: Response received:', response);
+      console.log('API Service: Response data:', response.data);
+      return response;
+    } catch (error) {
+      console.log('API Service: Error occurred:', error);
+      throw error;
+    }
+  },
+  
+  getAdminStats: async () => {
+    const response = await api.get('/auth/admin-stats/');
+    return response.data;
+  },
+  
+  logout: async () => {
+    const response = await api.post('/auth/logout/');
     return response.data;
   }
 };

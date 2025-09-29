@@ -4,7 +4,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from datetime import timedelta
 
-from polls.models import Question, UserVote
+from polls.models import Question, UserVote, UserProfile
 from polls.tests.utils import (
     make_json_post_request, 
     create_question_with_choices, 
@@ -191,6 +191,7 @@ class TestAdminCreateQuestion(TestCase):
         
         self.assertEqual(Question.objects.count(), 1)
         question = Question.objects.first()
+        assert question is not None  # Type assertion for linter
         self.assertEqual(question.question_text, "Test question")
         self.assertEqual(question.pub_date, now)
         self.assertEqual(question.choice_set.count(), 2)
@@ -250,6 +251,7 @@ class TestAdminCreateQuestion(TestCase):
         
         self.assertEqual(response.status_code, 201)
         question = Question.objects.first()
+        assert question is not None  # Type assertion for linter
         self.assertEqual(question.question_text, "Test future question")
         self.assertEqual(question.pub_date, future_pub_date)
 
@@ -266,6 +268,7 @@ class TestAdminCreateQuestion(TestCase):
         
         self.assertEqual(response.status_code, 201)
         question = Question.objects.first()
+        assert question is not None  # Type assertion for linter
         self.assertEqual(question.question_text, "Test choiceless question")
         self.assertEqual(question.choice_set.count(), 0)
     
@@ -574,6 +577,15 @@ class TestUserInfo(TestCase):
             is_admin=False
         )
         
+        # Delete and recreate profile to avoid signal interference
+        profile.delete()
+        profile = UserProfile.objects.create(
+            user=user,
+            google_email="test@gmail.com",
+            google_name="Test User",
+            is_admin=False
+        )
+        
         self.client.force_authenticate(user=user)
         response = self.client.get(self.url)
         
@@ -590,6 +602,15 @@ class TestUserInfo(TestCase):
         """
         user, profile = create_test_user_with_profile(
             username="admin",
+            google_email="admin@gmail.com",
+            google_name="Admin User",
+            is_admin=True
+        )
+        
+        # Delete and recreate profile to avoid signal interference
+        profile.delete()
+        profile = UserProfile.objects.create(
+            user=user,
             google_email="admin@gmail.com",
             google_name="Admin User",
             is_admin=True
@@ -659,6 +680,15 @@ class TestAdminStats(TestCase):
         admin_user, admin_profile = create_test_user_with_profile(
             username="admin",
             google_email="admin@gmail.com",
+            is_admin=True
+        )
+        
+        # Delete and recreate profile to avoid signal interference
+        admin_profile.delete()
+        admin_profile = UserProfile.objects.create(
+            user=admin_user,
+            google_email="admin@gmail.com",
+            google_name="Admin User",
             is_admin=True
         )
         

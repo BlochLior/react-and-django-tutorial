@@ -5,12 +5,14 @@ import QuestionForm from '../../components/admin/QuestionForm';
 import usePageTitle from '../../hooks/usePageTitle';
 import { adminApi } from '../../services/apiService';
 import useMutation from '../../hooks/useMutation';
+import { useQueryClient } from '@tanstack/react-query';
 
 const NewQuestion = () => {
     usePageTitle('Create New Question - Polling App');
     
     const navigate = useNavigate();
     const toast = useToast();
+    const queryClient = useQueryClient();
 
     // Using custom mutation hook for creating questions
     const [createQuestion, { loading: isLoading }] = useMutation(
@@ -25,6 +27,8 @@ const NewQuestion = () => {
                     duration: 3000,
                     isClosable: true,
                 });
+                // Invalidate all queries to refresh data
+                queryClient.invalidateQueries({ queryKey: ['query'] });
                 navigate('/admin/');
             },
             onError: () => {

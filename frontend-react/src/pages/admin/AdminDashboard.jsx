@@ -26,6 +26,7 @@ import { categorizeQuestions } from '../../utils/questionUtils';
 const AdminDashboard = () => {
     usePageTitle('Admin Dashboard - Polling App');
     
+    
     // Add state for pagination
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -33,8 +34,9 @@ const AdminDashboard = () => {
 
     // Create a stable query function
     const getQuestionsQuery = useCallback(async () => {
-        return adminApi.getQuestions(currentPage);
-    }, [currentPage]);
+        const result = await adminApi.getQuestions(currentPage);
+        return result;
+    }, [currentPage]); // refreshKey is handled by useQuery dependencies
 
     // Memoize the onSuccess callback to prevent infinite re-renders
     const onSuccessCallback = useCallback((data) => {
@@ -44,16 +46,17 @@ const AdminDashboard = () => {
     }, []);
 
     // Using custom query hook for data fetching
-    const { 
+    const {
         data: response,
         loading,
         error
     } = useQuery(
         getQuestionsQuery,
-        [currentPage],
-        { 
+        [currentPage], // Dependencies for the query
+        {
             errorMessage: 'Failed to fetch questions.',
-            onSuccess: onSuccessCallback
+            onSuccess: onSuccessCallback,
+            refetchOnMount: true // Force refetch when component mounts
         }
     );
 
@@ -102,8 +105,8 @@ const AdminDashboard = () => {
                         </Stat>
                     </StatGroup>
                     
-                    {/* Add Question Button */}
-                    <HStack justify="center">
+                    {/* Add Question Button and Refresh Button */}
+                    <HStack justify="center" spacing={4}>
                         <Button
                             as={RouterLink}
                             to="/admin/new"

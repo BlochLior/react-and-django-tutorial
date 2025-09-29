@@ -1,4 +1,3 @@
-from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.shortcuts import get_object_or_404
@@ -97,7 +96,6 @@ def client_poll_detail(_request: Request, pk):
     serialized_question = serialize_question_with_choices(question).model_dump()
     return Response(serialized_question, status=status.HTTP_200_OK)
 
-@csrf_exempt
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def vote(request: Request):
@@ -105,6 +103,15 @@ def vote(request: Request):
     Handles a POST request to update vote counts for a poll.
     Now tracks user votes to prevent duplicate voting and enable user-specific features.
     """
+    # Debug authentication
+    print(f"Vote request - User: {request.user}, Authenticated: {request.user.is_authenticated}")
+    print(f"Session key: {request.session.session_key}")
+    print(f"Session data: {dict(request.session)}")
+    
+    if not request.user.is_authenticated:
+        print("User not authenticated for vote")
+        return Response({"error": "Authentication required"}, status=status.HTTP_403_FORBIDDEN)
+    
     try:
         # Print the raw data for debugging
         print("Received data:", request.data)
@@ -149,6 +156,7 @@ def vote(request: Request):
     
 # --- Admin Views ---
 @api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def admin_create_question(request: Request):
     """
     Creates a new question with choices.
@@ -227,6 +235,7 @@ def admin_dashboard(request: Request):
     return Response(response_data, status=status.HTTP_200_OK)
 
 @api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
 def admin_question_detail(request: Request, pk):
     """
     Handles read, update and delete operations for a single question.
@@ -279,6 +288,15 @@ def admin_question_detail(request: Request, pk):
         return Response({"message": "Question updated successfully"}, status=status.HTTP_200_OK)
 
     elif request.method == 'DELETE':
+        # Debug authentication
+        print(f"Delete request - User: {request.user}, Authenticated: {request.user.is_authenticated}")
+        print(f"Session key: {request.session.session_key}")
+        print(f"Session data: {dict(request.session)}")
+        
+        if not request.user.is_authenticated:
+            print("User not authenticated for delete")
+            return Response({"error": "Authentication required"}, status=status.HTTP_403_FORBIDDEN)
+        
         question.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -301,9 +319,15 @@ def user_info(request: Request):
     Get current user information for the home page.
     Returns user details, admin status, and voting status.
     """
+    # Debug logging
+    print(f"User info request - User: {request.user}, Authenticated: {request.user.is_authenticated}")
+    print(f"Session key: {request.session.session_key}")
+    print(f"Session data: {dict(request.session)}")
+    
     if request.user.is_authenticated:
         try:
             profile = request.user.userprofile
+            print(f"User profile found: {profile.google_email}")
             return Response({
                 'authenticated': True,
                 'email': profile.google_email,
@@ -312,6 +336,7 @@ def user_info(request: Request):
                 'has_voted': has_user_voted(request.user)
             })
         except UserProfile.DoesNotExist:
+            print(f"UserProfile not found for user: {request.user.username}")
             # Fallback for users without profiles (shouldn't happen in OAuth flow)
             return Response({
                 'authenticated': True,
@@ -320,6 +345,7 @@ def user_info(request: Request):
                 'is_admin': False,
                 'has_voted': False
             })
+    print("User not authenticated")
     return Response({'authenticated': False})
 
 
