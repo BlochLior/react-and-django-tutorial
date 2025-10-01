@@ -309,13 +309,14 @@ uv run coverage html              # Generate HTML coverage report
 ## 🎉 Major Achievements
 
 ### **Frontend (React)**
-- ✅ **Infinite Loop Resolution**: Fixed DDoS-like API calls overwhelming backend
+- ✅ **Infinite Loop Resolution**: Fixed DDoS-like API calls overwhelming backend (including AuthContext loops)
 - ✅ **React Query Migration**: Successfully migrated from custom hooks to React Query
 - ✅ **Testing Infrastructure**: Established professional-grade testing framework
 - ✅ **Test Centralization**: Complete test-utils system with 181/181 tests passing
 - ✅ **Refactoring Templates**: Systematic test refactoring with centralized patterns
 - ✅ **Performance Optimization**: Eliminated unnecessary re-renders and API calls
 - ✅ **Code Maintainability**: Consistent patterns and centralized utilities
+- ✅ **ESLint Best Practices**: Documented when and why to disable exhaustive-deps rule safely
 
 ### **Backend (Django)**
 - ✅ **Modern Architecture**: Latest Django with best practices

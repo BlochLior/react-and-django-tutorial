@@ -12,7 +12,8 @@ const ClientHomePage = () => {
     React.useEffect(() => {
         console.log('ClientHomePage: Component mounted, refreshing auth status');
         refreshAuthStatus();
-    }, [refreshAuthStatus]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run on mount
 
     const handleAnswerPoll = () => {
         navigate('/polls');

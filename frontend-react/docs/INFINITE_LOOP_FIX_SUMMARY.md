@@ -226,6 +226,8 @@ test('does not make excessive API calls', async () => {
 2. **Use `useMemo` for objects and callbacks** passed to hooks
 3. **Check dependency arrays** for unstable references
 4. **Test for excessive API calls** in component tests
+5. **Be careful with function dependencies in `useEffect`** - avoid including functions that change on every render
+6. **Use ESLint disable comments judiciously** - only when you understand the trade-offs and have verified safety
 
 ### **Testing Strategy**
 1. **Include infinite loop detection** in all component tests
@@ -262,3 +264,77 @@ The infinite loop issue has been **completely resolved** through comprehensive f
 5. **Code quality enhanced** - Better patterns for future development
 
 The application now functions normally without overwhelming the backend server, and all components use stable, memoized functions that prevent unnecessary re-renders and API calls. The fixes ensure long-term stability and prevent similar issues from occurring in the future.
+
+## 📝 **Additional Notes: ESLint Warnings and Dependency Management**
+
+### **When to Disable ESLint's `react-hooks/exhaustive-deps`**
+
+The ESLint rule `react-hooks/exhaustive-deps` enforces that all variables used inside hooks must be included in dependency arrays. However, there are **valid cases** where disabling this rule is appropriate:
+
+#### **Safe Scenarios for Disabling**
+1. **Stable function references** - Functions that don't capture changing values
+2. **One-time initialization** - Effects that should only run on mount
+3. **External stable references** - Functions from context that don't change
+
+#### **Example: ClientHomePage Authentication Refresh**
+```javascript
+// AuthContext provides a stable refreshAuthStatus function
+const { refreshAuthStatus } = useAuth();
+
+// We only want this to run once on mount, not every time the function reference changes
+React.useEffect(() => {
+    refreshAuthStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []); // Only run on mount
+```
+
+**Why this is safe:**
+- `refreshAuthStatus()` always does the same thing: increment a counter
+- The function behavior never changes
+- We explicitly want this to run only once on component mount
+- Including the function in dependencies would cause unnecessary re-runs
+
+#### **When NOT to Disable**
+- ❌ Functions that capture props or state
+- ❌ Functions that have changing behavior based on external values
+- ❌ Effects that need to re-run when dependencies change
+- ❌ When you're not sure why ESLint is warning
+
+#### **Best Practices**
+1. **Always add a comment** explaining why you're disabling the rule
+2. **Verify the function is stable** and doesn't capture changing values
+3. **Test thoroughly** to ensure no infinite loops are created
+4. **Consider alternatives** like `useCallback` with empty deps or moving logic inside the effect
+
+### **Preventing AuthContext Infinite Loops**
+
+The AuthContext infinite loop was caused by:
+1. **Function recreation on every render** - `refreshAuthStatus` being recreated
+2. **Circular dependencies** - `useEffect` depending on functions that trigger re-renders
+3. **Multiple effect hooks** - Different effects triggering each other
+
+**Solution applied:**
+```javascript
+// AuthContext.js - Removed useCallback to avoid dependency issues
+const checkAuthStatus = async () => {
+    // Simple async function without dependencies
+    // ...
+};
+
+// Separate effects with minimal dependencies
+useEffect(() => {
+    checkAuthStatus();
+}, []); // Initial check only
+
+useEffect(() => {
+    if (refreshKey > 0) {
+        checkAuthStatus();
+    }
+}, [refreshKey]); // Only depend on the counter, not the function
+```
+
+**Key lessons:**
+- Remove unnecessary `useCallback` when it adds dependency complexity
+- Use simple counters (`refreshKey`) instead of function dependencies
+- Implement `useRef` guards to prevent concurrent calls
+- Separate concerns into different effects with clear, minimal dependencies

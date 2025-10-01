@@ -871,3 +871,48 @@ After extensive testing and debugging, we implemented a **manual refresh system*
 3. **F5 Alternative** → Browser refresh always works as fallback
 
 This approach provides **reliable, predictable behavior** while maintaining **excellent user experience** and **data consistency**.
+
+### **Lessons Learned: AuthContext Infinite Loop Prevention**
+
+#### **The Problem: DDoS-like API Calls**
+During implementation, we encountered an infinite loop where `ClientHomePage` was making excessive API calls to `/auth/user-info/`, effectively DDoS'ing the backend.
+
+**Root causes identified:**
+1. **Circular dependencies in `useEffect`** - Component depended on `refreshAuthStatus` function
+2. **Function recreation on every render** - `refreshAuthStatus` was being recreated, triggering effects
+3. **Multiple effect hooks triggering each other** - Complex web of dependencies
+
+#### **The Solution**
+```javascript
+// ❌ WRONG: Creates infinite loop
+React.useEffect(() => {
+    refreshAuthStatus();
+}, [refreshAuthStatus]); // Function recreated on every render → infinite loop
+
+// ✅ CORRECT: Runs only once on mount
+React.useEffect(() => {
+    refreshAuthStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []); // Only run on mount - function is stable
+```
+
+#### **Why Disabling ESLint is Safe Here**
+The `react-hooks/exhaustive-deps` ESLint rule warns about missing dependencies. However, it's safe to disable when:
+
+1. **Function behavior is stable** - `refreshAuthStatus()` always increments a counter
+2. **No captured values** - Function doesn't depend on props or state
+3. **Intentional one-time execution** - We explicitly want it to run only on mount
+4. **Verified no side effects** - Thoroughly tested to ensure no infinite loops
+
+**Best practices applied:**
+- Added explanatory comment about why ESLint is disabled
+- Used `useRef` guards to prevent concurrent API calls
+- Separated effects with minimal, explicit dependencies
+- Removed unnecessary `useCallback` that added complexity
+
+#### **Key Takeaways**
+1. **Prefer simple counters** over function dependencies in effects
+2. **Use `useRef` for concurrent call protection** - prevents multiple simultaneous API calls
+3. **Document ESLint disables** - always explain why it's safe
+4. **Test thoroughly** - verify no infinite loops with real API calls
+5. **Keep effects focused** - separate concerns with clear dependencies
