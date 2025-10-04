@@ -81,21 +81,23 @@ describe('NewQuestion', () => {
       const [loadingMutateFn, loadingState] = createMockMutation({ loading: true });
       mockUseMutation.mockReturnValue([loadingMutateFn, loadingState]);
       
-      const { rerender } = renderNewQuestion();
+      const { unmount } = renderNewQuestion();
       expect(screen.getByText('Create New Question')).toBeInTheDocument();
+      unmount();
       
-      // Test error state
+      // Test error state - render fresh component instead of rerender
       const [errorMutateFn, errorState] = createMockMutation({ error: 'Test error' });
       mockUseMutation.mockReturnValue([errorMutateFn, errorState]);
       
-      rerender(<NewQuestion />);
+      const { unmount: unmount2 } = renderNewQuestion();
       expect(screen.getByText('Create New Question')).toBeInTheDocument();
+      unmount2();
       
-      // Test success state
+      // Test success state - render fresh component instead of rerender
       const [successMutateFn, successState] = createMockMutation({ data: { success: true } });
       mockUseMutation.mockReturnValue([successMutateFn, successState]);
       
-      rerender(<NewQuestion />);
+      renderNewQuestion();
       expect(screen.getByText('Create New Question')).toBeInTheDocument();
     });
 

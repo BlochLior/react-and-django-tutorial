@@ -68,11 +68,9 @@ const renderWithProviders = (ui, { route = '/' } = {}) => {
   window.history.pushState({}, 'Test page', route);
 
   return render(
-    <ChakraProvider>
-      <BrowserRouter>
-        {ui}
-      </BrowserRouter>
-    </ChakraProvider>
+    <QueryChakraRouterWrapper route={route}>
+      {ui}
+    </QueryChakraRouterWrapper>
   );
 };
 
