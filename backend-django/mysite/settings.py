@@ -106,7 +106,7 @@ SOCIALACCOUNT_LOGIN_ON_GET = True
 # Session configuration for OAuth
 SESSION_COOKIE_HTTPONLY = False  # Allow JavaScript access for client-side auth checks
 SESSION_COOKIE_SECURE = ENVIRONMENT == 'production'  # Secure cookies in production (HTTPS only)
-SESSION_COOKIE_SAMESITE = 'Lax'  # Allow cross-site requests
+SESSION_COOKIE_SAMESITE = 'None' if ENVIRONMENT == 'production' else 'Lax'  # None for cross-domain in production
 SESSION_COOKIE_DOMAIN = None  # Use default domain
 
 # Additional session settings for cross-domain OAuth
@@ -114,7 +114,7 @@ SESSION_COOKIE_PATH = '/'
 SESSION_SAVE_EVERY_REQUEST = True  # Save session on every request
 
 # CSRF configuration for OAuth
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'None' if ENVIRONMENT == 'production' else 'Lax'  # None for cross-domain in production
 CSRF_COOKIE_SECURE = ENVIRONMENT == 'production'  # Secure cookies in production
 
 if ENVIRONMENT == 'production':

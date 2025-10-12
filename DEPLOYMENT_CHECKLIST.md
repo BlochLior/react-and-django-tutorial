@@ -465,14 +465,22 @@ REACT_APP_API_BASE_URL=https://your-app.onrender.com
 2. Ensure your Google account email matches `MAIN_ADMIN_EMAIL` exactly
 3. Check your UserProfile in Django admin has `is_admin=True`
 
-### **Issue: Session Not Persisting**
-**Error:** User gets logged out on refresh
+### **Issue: Session Not Persisting / Cookies Blocked**
+**Error:** User gets logged out on refresh, or "Cookie has been rejected as third-party"
 
-**Solutions:**
-1. Check `SESSION_COOKIE_SECURE` is properly set based on ENVIRONMENT
-2. Verify `SESSION_COOKIE_DOMAIN` is None (uses default)
-3. Check browser allows third-party cookies
-4. Ensure `CORS_ALLOW_CREDENTIALS=True`
+**Root Cause:** Cross-domain authentication (Vercel ≠ Render domain) triggers browser third-party cookie blocking.
+
+**Solution (Already in Code):**
+The settings automatically configure for cross-domain in production:
+- `SESSION_COOKIE_SAMESITE='None'` (allows cross-domain)
+- `SESSION_COOKIE_SECURE=True` (required for SameSite=None)
+- `CSRF_COOKIE_SAMESITE='None'` (allows cross-domain)
+
+**If still having issues:**
+1. Verify `ENVIRONMENT=production` is set in Render
+2. Check browser console for cookie warnings
+3. Try in incognito/private mode (some extensions block cookies)
+4. Ensure `CORS_ALLOW_CREDENTIALS=True` (already set in code)
 
 ---
 
