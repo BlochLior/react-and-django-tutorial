@@ -114,6 +114,7 @@ SESSION_COOKIE_PATH = '/'
 SESSION_SAVE_EVERY_REQUEST = True  # Save session on every request
 
 # CSRF configuration for OAuth
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF token
 CSRF_COOKIE_SAMESITE = 'None' if ENVIRONMENT == 'production' else 'Lax'  # None for cross-domain in production
 CSRF_COOKIE_SECURE = ENVIRONMENT == 'production'  # Secure cookies in production
 
