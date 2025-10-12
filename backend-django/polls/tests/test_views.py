@@ -754,12 +754,13 @@ class TestAdminStats(TestCase):
             days=-1,
             choice_texts=["C", "D"]
         )
-        future_question = create_question_with_choices(
+        # Create future and choiceless questions (not used in tests but needed for stats)
+        create_question_with_choices(
             question_text="Future Question",
             days=5,
             choice_texts=["E", "F"]
         )
-        choiceless_question = create_question_with_choices(
+        create_question_with_choices(
             question_text="Choiceless Question",
             days=-1,
             choice_texts=[]

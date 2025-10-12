@@ -1,14 +1,11 @@
 from django.test import TestCase
 from django.utils import timezone
 from django.contrib.auth.models import User
-from django.db import IntegrityError
 from datetime import timedelta
 
 from polls.models import Choice, UserProfile, UserVote, Question
 from polls.tests.utils import (
     create_question_with_choices, 
-    create_test_user, 
-    create_user_profile, 
     create_test_user_with_profile,
     create_user_vote,
     create_complete_voting_scenario

@@ -6,4 +6,4 @@ class PollsConfig(AppConfig):
     name = 'polls'
     
     def ready(self):
-        import polls.signals
+        pass

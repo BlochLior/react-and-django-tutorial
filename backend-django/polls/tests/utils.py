@@ -1,7 +1,6 @@
 from datetime import timedelta
 from django.utils import timezone
 from django.test import Client
-from django.http import HttpResponse
 from django.contrib.auth.models import User
 from polls.models import Question, Choice, UserProfile, UserVote
 import json

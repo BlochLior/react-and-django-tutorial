@@ -1,9 +1,7 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -674,7 +672,7 @@ def logout_view(request: Request):
         # Clear the Django session
         request.session.flush()
         return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
-    except Exception as e:
+    except Exception:
         return Response({"error": "Logout failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     

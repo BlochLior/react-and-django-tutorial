@@ -3,16 +3,13 @@ Tests for authentication business logic and user flow
 """
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
-from django.urls import reverse
-from polls.models import UserProfile, UserVote, Question, Choice
-from django.utils import timezone
+from polls.models import UserProfile, UserVote
 from .utils import (
     create_test_user_with_profile, 
     create_question_with_choices, 
     create_user_vote,
     make_json_post_request
 )
-import json
 
 class AuthenticationBusinessLogicTests(TestCase):
     """Test authentication business logic and user flow"""
@@ -68,7 +65,7 @@ class AuthenticationBusinessLogicTests(TestCase):
         """Test user_info endpoint for authenticated client user"""
         # Delete and recreate profile to avoid signal interference
         self.profile.delete()
-        profile = UserProfile.objects.create(
+        UserProfile.objects.create(
             user=self.user,
             google_email='test@gmail.com',
             google_name='Test User',
@@ -90,7 +87,7 @@ class AuthenticationBusinessLogicTests(TestCase):
         """Test user_info endpoint for authenticated admin user"""
         # Delete and recreate profile to avoid signal interference
         self.admin_profile.delete()
-        profile = UserProfile.objects.create(
+        UserProfile.objects.create(
             user=self.admin_user,
             google_email='admin@gmail.com',
             google_name='Admin User',
@@ -141,7 +138,7 @@ class AuthenticationBusinessLogicTests(TestCase):
         
         # Admin user - ensure profile is properly configured
         self.admin_profile.delete()
-        profile = UserProfile.objects.create(
+        UserProfile.objects.create(
             user=self.admin_user,
             google_email='admin@gmail.com',
             google_name='Admin User',

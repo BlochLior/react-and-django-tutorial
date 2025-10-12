@@ -9,8 +9,8 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mysite.settings')
 django.setup()
 
-from allauth.socialaccount.models import SocialApp
-from django.contrib.sites.models import Site
+from allauth.socialaccount.models import SocialApp  # noqa: E402
+from django.contrib.sites.models import Site  # noqa: E402
 
 # Get or create the default site
 site, created = Site.objects.get_or_create(
