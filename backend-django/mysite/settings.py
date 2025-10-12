@@ -37,10 +37,9 @@ DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 
 if ENVIRONMENT == 'production':
-    ALLOWED_HOSTS = [
-        'react-and-django-tutorial.onrender.com',
-        '127.0.0.1',  # For health checks
-    ]
+    # Get allowed hosts from environment variable or use default
+    allowed_hosts_env = os.getenv('ALLOWED_HOSTS', 'react-and-django-tutorial.onrender.com')
+    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',')] + ['127.0.0.1']
 else:
     ALLOWED_HOSTS = [
         '127.0.0.1',
@@ -105,10 +104,10 @@ ACCOUNT_LOGOUT_REDIRECT_URL = f'{FRONTEND_URL}/'
 SOCIALACCOUNT_LOGIN_ON_GET = True
 
 # Session configuration for OAuth
-SESSION_COOKIE_HTTPONLY = False  # Allow JavaScript access for debugging
-SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+SESSION_COOKIE_HTTPONLY = False  # Allow JavaScript access for client-side auth checks
+SESSION_COOKIE_SECURE = ENVIRONMENT == 'production'  # Secure cookies in production (HTTPS only)
 SESSION_COOKIE_SAMESITE = 'Lax'  # Allow cross-site requests
-SESSION_COOKIE_DOMAIN = None  # Use default domain (localhost)
+SESSION_COOKIE_DOMAIN = None  # Use default domain
 
 # Additional session settings for cross-domain OAuth
 SESSION_COOKIE_PATH = '/'
@@ -116,13 +115,20 @@ SESSION_SAVE_EVERY_REQUEST = True  # Save session on every request
 
 # CSRF configuration for OAuth
 CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SECURE = False
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-]
+CSRF_COOKIE_SECURE = ENVIRONMENT == 'production'  # Secure cookies in production
+
+if ENVIRONMENT == 'production':
+    CSRF_TRUSTED_ORIGINS = [
+        FRONTEND_URL,  # Vercel frontend
+        f'https://{ALLOWED_HOSTS[0]}',  # Render backend
+    ]
+else:
+    CSRF_TRUSTED_ORIGINS = [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://localhost:8000',
+        'http://127.0.0.1:8000',
+    ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -256,9 +262,9 @@ elif not TESTING:
 
 # CORS configuration based on environment
 if ENVIRONMENT == 'production':
-    CORS_ALLOWED_ORIGINS = [
-        "https://react-and-django-tutorial.vercel.app",
-    ]
+    # Get CORS origins from FRONTEND_URL environment variable
+    cors_origins = [FRONTEND_URL] if FRONTEND_URL else []
+    CORS_ALLOWED_ORIGINS = cors_origins
     CORS_ALLOW_ALL_ORIGINS = False
 else:
     # Development - allow all origins for easier testing

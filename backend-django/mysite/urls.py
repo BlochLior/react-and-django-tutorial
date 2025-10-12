@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 
@@ -21,7 +22,8 @@ from debug_toolbar.toolbar import debug_toolbar_urls
 
 urlpatterns = [
     path("polls/", include("polls.urls")),
-    path("admin/", include("polls.admin_urls")),
+    path("admin/", include("polls.admin_urls")),  # Your custom admin dashboard
+    path("django-admin/", admin.site.urls),  # Django's built-in admin panel
     path("auth/", include("polls.auth_urls")),
     # Django-allauth OAuth URLs
     path("accounts/", include("allauth.urls")), # allauth is from the django-allauth package, not a local dir
