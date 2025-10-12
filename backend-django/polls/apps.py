@@ -6,4 +6,4 @@ class PollsConfig(AppConfig):
     name = 'polls'
     
     def ready(self):
-        pass
+        import polls.signals  # noqa: F401 - Register signal handlers
