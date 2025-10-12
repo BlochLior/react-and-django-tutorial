@@ -295,18 +295,13 @@ uv run python manage.py test polls.tests.test_views.TestAdminDashboard
 ## 📚 Documentation
 
 ### **Project Documentation**
-- **`README.md`**: This file: Comprehensive project documentation index
-- **`DEPLOYMENT.md`**: Complete deployment guide for production
-- **`AUTHENTICATION_PLAN.md`**: Google OAuth authentication implementation plan
-- **`frontend-react/docs/`**: Frontend-specific documentation
+- **`README.md`**: This file - Project overview and quick start guide
+- **`DEPLOYMENT.md`**: Production deployment guide (Render + Vercel + Railway)
+- **`docs/AUTHENTICATION_PLAN.md`**: Google OAuth authentication implementation reference
+- **`docs/implementation-history/`**: Historical implementation notes and fixes
 - **`backend-django/README.md`**: Backend-specific documentation
-
-### **Key Documentation Topics in `frontend-react/docs/`**
-- **Infinite Loop Resolution**: How we fixed DDoS-like API calls
-- **React Query Migration**: Migration from custom hooks to React Query
-- **Testing Infrastructure**: Professional-grade testing framework
-- **Component Optimization**: Performance improvements and best practices
-- **API Design**: RESTful API architecture and endpoints
+- **`frontend-react/docs/`**: Frontend architecture and testing documentation
+- **`frontend-react/src/test-utils/`**: Test utilities and patterns documentation
 
 ## 🎉 Major Achievements
 
@@ -337,7 +332,7 @@ uv run python manage.py test polls.tests.test_views.TestAdminDashboard
 - ✅ **Conditional Results**: Filtered results based on user access level
 - ✅ **Cache Management**: React Query-based cache invalidation for data consistency
 
-**Implementation Status**: See **[AUTHENTICATION_PLAN.md](AUTHENTICATION_PLAN.md)** for complete implementation details.
+**Implementation Status**: See **[docs/AUTHENTICATION_PLAN.md](docs/AUTHENTICATION_PLAN.md)** for complete implementation details.
 
 ## 📞 Support & Resources
 
