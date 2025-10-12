@@ -1,5 +1,6 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
@@ -12,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from pydantic import ValidationError
 
-from polls.models import Question, Choice, UserProfile, UserVote
+from polls.models import Question, Choice, UserProfile, UserVote, AdminUserManagement, PollStatus
 from polls.schemas import (
     NewQuestionSchema, 
     PollSubmissionSchema, 
@@ -26,17 +27,63 @@ from polls.serializers import serialize_question_with_choices, serialize_questio
 QUESTIONS_PER_PAGE = 5
 ADMIN_QUESTIONS_PER_PAGE = 10
 
+def get_ordered_questions_for_admin():
+    """Get questions ordered by admin dashboard requirements"""
+    now = timezone.now()
+    
+    # Published questions (old to new)
+    published = Question.objects.filter(
+        pub_date__lte=now,
+        choice__isnull=False
+    ).distinct().order_by('pub_date', 'id')
+    
+    # Future questions with choices (by pub_date, fallback to id)
+    future_with_choices = Question.objects.filter(
+        pub_date__gt=now,
+        choice__isnull=False
+    ).distinct().order_by('pub_date', 'id')
+    
+    # Get all question IDs that have choices
+    questions_with_choices = Question.objects.filter(
+        choice__isnull=False
+    ).values_list('id', flat=True).distinct()
+    
+    # Choiceless questions - published (by pub_date, fallback to id)
+    choiceless = Question.objects.filter(
+        pub_date__lte=now
+    ).exclude(
+        id__in=questions_with_choices
+    ).order_by('pub_date', 'id')
+    
+    # Future choiceless questions
+    future_choiceless = Question.objects.filter(
+        pub_date__gt=now
+    ).exclude(
+        id__in=questions_with_choices
+    ).order_by('pub_date', 'id')
+    
+    return {
+        'published': published,
+        'future_with_choices': future_with_choices,
+        'choiceless': choiceless,
+        'future_choiceless': future_choiceless
+    }
+
+def get_ordered_questions_for_client():
+    """Get questions ordered for client view (published only)"""
+    return Question.objects.filter(
+        pub_date__lte=timezone.now(),
+        choice__isnull=False
+    ).distinct().order_by('pub_date', 'id')
+
 # --- Client Views ---
 @api_view(["GET"])
 def client_poll_list(request: Request):
     """
-    Returns a paginated list of published questions with choices.
+    Returns a paginated list of published questions with standardized ordering.
     """
-    # Filter to only questions published and with choices
-    questions_queryset = Question.objects.filter(
-        pub_date__lte=timezone.now(),
-        choice__isnull=False
-    ).distinct().order_by('-pub_date')
+    # Use standardized ordering for client view
+    questions_queryset = get_ordered_questions_for_client()
 
     # Check for the 'page_size=all' parameter
     page_size = request.query_params.get('page_size')
@@ -100,8 +147,14 @@ def client_poll_detail(_request: Request, pk):
 @permission_classes([IsAuthenticated])
 def vote(request: Request):
     """
-    Handles a POST request to update vote counts for a poll.
-    Now tracks user votes to prevent duplicate voting and enable user-specific features.
+    Handles a POST request to replace user's votes completely.
+    This endpoint supports:
+    - Initial vote submission
+    - Vote modification (re-answering)
+    - Vote removal (by sending empty votes dict)
+    
+    The endpoint removes ALL existing votes for the user, then adds the new votes.
+    This ensures atomic vote updates and allows users to change or remove their votes.
     """
     # Debug authentication
     print(f"Vote request - User: {request.user}, Authenticated: {request.user.is_authenticated}")
@@ -111,6 +164,10 @@ def vote(request: Request):
     if not request.user.is_authenticated:
         print("User not authenticated for vote")
         return Response({"error": "Authentication required"}, status=status.HTTP_403_FORBIDDEN)
+    
+    # Check if poll is closed
+    if PollStatus.is_poll_closed():
+        return Response({"error": "Poll is closed. No further votes accepted."}, status=status.HTTP_403_FORBIDDEN)
     
     try:
         # Print the raw data for debugging
@@ -123,36 +180,65 @@ def vote(request: Request):
 
     votes_dict = submission.votes
 
-    if not votes_dict:
-        return Response({"error": "No votes provided"}, status=status.HTTP_400_BAD_REQUEST)
+    # Step 1: Remove ALL existing votes for this user
+    existing_votes = UserVote.objects.filter(user=request.user).select_related('choice')
+    for existing_vote in existing_votes:
+        # Decrement vote count for each existing choice
+        existing_vote.choice.votes -= 1
+        existing_vote.choice.save()
+    
+    # Delete all existing user votes
+    existing_votes.delete()
+    
+    # Step 2: Add new votes (if any provided)
+    if votes_dict:
+        for question_id, choice_id in votes_dict.items():
+            try:
+                choice = Choice.objects.select_related("question").get(pk=choice_id)
+            except ObjectDoesNotExist:
+                return Response({"error": "Choice with this ID was not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    for question_id, choice_id in votes_dict.items():
-        try:
-            choice = Choice.objects.select_related("question").get(pk=choice_id)
-        except ObjectDoesNotExist:
-            return Response({"error": "Choice with this ID was not found"}, status=status.HTTP_404_NOT_FOUND)
+            if choice.question_id != question_id:
+                return Response({"error": "Choice does not belong to this question"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Record new vote
+            UserVote.objects.create(user=request.user, question=choice.question, choice=choice)
+            
+            # Increment vote count
+            choice.votes += 1
+            choice.save()
 
-        if choice.question_id != question_id:
-            return Response({"error": "Choice does not belong to this question"}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"message": "Votes updated successfully"}, status=status.HTTP_200_OK)
 
-        # Remove existing vote if user already voted on this question
-        existing_vote = UserVote.objects.filter(user=request.user, question=choice.question).first()
-        if existing_vote:
-            # Decrement the old choice's vote count
-            old_choice = existing_vote.choice
-            old_choice.votes -= 1
-            old_choice.save()
-            # Remove the old vote record
-            existing_vote.delete()
-        
-        # Record new vote
-        UserVote.objects.create(user=request.user, question=choice.question, choice=choice)
-        
-        # Update vote count
-        choice.votes += 1
-        choice.save()
-
-    return Response({"message": "Votes submitted successfully"}, status=status.HTTP_200_OK)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def user_votes(request: Request):
+    """
+    Get user's submitted votes with question and choice details.
+    Returns a list of all questions with their choices and the user's selected choice (if any).
+    """
+    if not request.user.is_authenticated:
+        return Response({"error": "Authentication required"}, status=status.HTTP_403_FORBIDDEN)
+    
+    # Get questions using standardized ordering
+    questions_queryset = get_ordered_questions_for_client().prefetch_related("choice_set")
+    
+    # Get user's votes
+    user_votes = UserVote.objects.filter(user=request.user).select_related('question', 'choice')
+    user_votes_dict = {vote.question_id: vote.choice_id for vote in user_votes}
+    
+    # Build response with questions and user's selections
+    results = []
+    for question in questions_queryset:
+        question_data = serialize_question_with_choices(question).model_dump()
+        # Add user's selected choice ID if they voted on this question
+        question_data['user_selected_choice_id'] = user_votes_dict.get(question.id)
+        results.append(question_data)
+    
+    return Response({
+        'count': len(results),
+        'results': results
+    }, status=status.HTTP_200_OK)
     
 # --- Admin Views ---
 @api_view(["POST"])
@@ -161,6 +247,14 @@ def admin_create_question(request: Request):
     """
     Creates a new question with choices.
     """
+    # Check if user is admin
+    try:
+        user_profile = UserProfile.objects.get(user=request.user)
+        if not user_profile.is_admin:
+            return Response({"error": "Admin access required"}, status=status.HTTP_403_FORBIDDEN)
+    except UserProfile.DoesNotExist:
+        return Response({"error": "User profile not found"}, status=status.HTTP_403_FORBIDDEN)
+    
     try:
         validated_data = NewQuestionSchema.model_validate(request.data)
     except ValidationError as e:
@@ -190,12 +284,29 @@ def admin_create_question(request: Request):
     return Response({"message": "Question created successfully"}, status=status.HTTP_201_CREATED)
     
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def admin_dashboard(request: Request):
     """
-    Returns a paginated list of questions with choices.
+    Returns a paginated list of questions with standardized ordering.
     """
-    # Retrieve all questions
-    questions_queryset = Question.objects.prefetch_related("choice_set").order_by('-pub_date')
+    # Check if user is admin
+    try:
+        user_profile = UserProfile.objects.get(user=request.user)
+        if not user_profile.is_admin:
+            return Response({"error": "Admin access required"}, status=status.HTTP_403_FORBIDDEN)
+    except UserProfile.DoesNotExist:
+        return Response({"error": "User profile not found"}, status=status.HTTP_403_FORBIDDEN)
+    
+    # Use standardized ordering for admin dashboard
+    ordered_questions = get_ordered_questions_for_admin()
+    
+    # Combine all question types in the desired order
+    questions_queryset = (
+        list(ordered_questions['published']) +
+        list(ordered_questions['future_with_choices']) +
+        list(ordered_questions['choiceless']) +
+        list(ordered_questions['future_choiceless'])
+    )
 
     try:
         page_size = int(request.query_params.get('page_size', ADMIN_QUESTIONS_PER_PAGE))
@@ -204,30 +315,38 @@ def admin_dashboard(request: Request):
     except ValueError: 
         page_size = ADMIN_QUESTIONS_PER_PAGE
     
-    paginator = Paginator(questions_queryset, page_size)
-    page_number = request.query_params.get('page', 1)
-
-    try: 
-        page_obj = paginator.page(page_number)
-    except PageNotAnInteger: 
-        # if a page is not an integer, deliver first page.
-        page_obj = paginator.page(1)
-    except EmptyPage: 
-        # if a page is out of range, deliver last page of results.
-        page_obj = paginator.page(paginator.num_pages)
+    # Manual pagination for the list
+    total_count = len(questions_queryset)
+    total_pages = (total_count + page_size - 1) // page_size  # Ceiling division
+    
+    try:
+        page_number = int(request.query_params.get('page', 1))
+        if page_number < 1:
+            page_number = 1
+        elif page_number > total_pages and total_pages > 0:
+            page_number = total_pages
+    except ValueError:
+        page_number = 1
+    
+    # Calculate slice indices
+    start_index = (page_number - 1) * page_size
+    end_index = start_index + page_size
+    
+    # Get the page slice
+    page_questions = questions_queryset[start_index:end_index]
     
     serialized_questions = [
         serialize_question_with_choices_admin(q).model_dump()
-        for q in page_obj
+        for q in page_questions
     ]
 
     # Build the response metadata and data
     response_data = {
-        'count': paginator.count,
-        'next': page_obj.next_page_number() if page_obj.has_next() else None,
-        'previous': page_obj.previous_page_number() if page_obj.has_previous() else None,
-        'page': page_obj.number,
-        'total_pages': paginator.num_pages,
+        'count': total_count,
+        'next': page_number + 1 if page_number < total_pages else None,
+        'previous': page_number - 1 if page_number > 1 else None,
+        'page': page_number,
+        'total_pages': total_pages,
         'page_size': page_size,
         'results': serialized_questions
     }
@@ -240,6 +359,14 @@ def admin_question_detail(request: Request, pk):
     """
     Handles read, update and delete operations for a single question.
     """
+    # Check if user is admin
+    try:
+        user_profile = UserProfile.objects.get(user=request.user)
+        if not user_profile.is_admin:
+            return Response({"error": "Admin access required"}, status=status.HTTP_403_FORBIDDEN)
+    except UserProfile.DoesNotExist:
+        return Response({"error": "User profile not found"}, status=status.HTTP_403_FORBIDDEN)
+    
     question = get_object_or_404(
         Question.objects.prefetch_related("choice_set").distinct(), 
         pk=pk,
@@ -303,13 +430,153 @@ def admin_question_detail(request: Request, pk):
 @api_view(['GET'])
 def admin_results_summary(request: Request):
     """
-    Returns a summary of all questions with their results, including vote counts and percentages.
+    Returns a summary of questions with their results, including vote counts and percentages.
+    
+    Access control:
+    - Guests/unauthenticated: Only published questions with choices
+    - Authenticated users: Only published questions with choices
+    - Admins: All questions (including unpublished and choiceless)
     """
-    questions = Question.objects.prefetch_related("choice_set").all().order_by('-pub_date')
+    # Check if user is admin
+    is_admin = False
+    if request.user.is_authenticated:
+        try:
+            # Query profile from DB to get latest values (avoid stale cache)
+            profile = UserProfile.objects.get(user=request.user)
+            is_admin = profile.is_admin
+        except UserProfile.DoesNotExist:
+            # User is authenticated but has no profile - treat as regular user
+            is_admin = False
+    
+    if is_admin:
+        # Admins see everything with standardized ordering
+        ordered_questions = get_ordered_questions_for_admin()
+        questions = (
+            list(ordered_questions['published']) +
+            list(ordered_questions['future_with_choices']) +
+            list(ordered_questions['choiceless']) +
+            list(ordered_questions['future_choiceless'])
+        )
+    else:
+        # Guests and regular users only see published questions with standardized ordering
+        questions = list(get_ordered_questions_for_client())
     
     serialized_summary = ResultsSummarySchema.model_validate(list(questions))
     
     return Response(serialized_summary.model_dump(), status=status.HTTP_200_OK)
+
+
+@api_view(['GET', 'POST', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def admin_user_management(request: Request):
+    """Manage admin users - only main admin can add/remove admins"""
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=401)
+    
+    try:
+        profile = request.user.userprofile
+        if not profile.is_admin:
+            return Response({'error': 'Admin access required'}, status=403)
+        
+        # Check if user is main admin
+        main_admin_email = AdminUserManagement.get_main_admin_email()
+        if profile.google_email != main_admin_email:
+            return Response({'error': 'Main admin access required'}, status=403)
+            
+    except UserProfile.DoesNotExist:
+        return Response({'error': 'Admin access required'}, status=403)
+    
+    if request.method == 'GET':
+        # Get all admin users
+        admin_users = UserProfile.objects.filter(is_admin=True).values(
+            'google_email', 'google_name', 'created_at'
+        )
+        return Response(list(admin_users))
+    
+    elif request.method == 'POST':
+        # Add new admin user
+        email = request.data.get('email')
+        if not email:
+            return Response({'error': 'Email required'}, status=400)
+        
+        try:
+            user = User.objects.get(email=email)
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            profile.is_admin = True
+            profile.save()
+            return Response({'message': 'Admin user added successfully'})
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+    
+    elif request.method == 'DELETE':
+        # Remove admin user
+        email = request.data.get('email')
+        if email == main_admin_email:
+            return Response({'error': 'Cannot remove main admin'}, status=400)
+        
+        # Additional check: prevent main admin from removing themselves
+        if email == profile.google_email:
+            return Response({'error': 'Main admin cannot remove their own privileges'}, status=400)
+        
+        try:
+            user = User.objects.get(email=email)
+            profile = user.userprofile
+            profile.is_admin = False
+            profile.save()
+            return Response({'message': 'Admin user removed successfully'})
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+
+
+@api_view(['GET', 'POST', 'DELETE'])
+def poll_closure(request: Request):
+    """Manage poll closure - GET is public, POST/DELETE require main admin"""
+    
+    if request.method == 'GET':
+        # Get current poll status - publicly accessible
+        is_closed = PollStatus.is_poll_closed()
+        status = PollStatus.objects.first()
+        
+        return Response({
+            'is_closed': is_closed,
+            'closed_at': status.closed_at if status else None,
+            'closed_by': status.closed_by.email if status and status.closed_by else None
+        })
+    
+    # For POST and DELETE, require authentication and main admin access
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=401)
+    
+    try:
+        profile = request.user.userprofile
+        if not profile.is_admin:
+            return Response({'error': 'Admin access required'}, status=403)
+        
+        # Check if user is main admin
+        main_admin_email = AdminUserManagement.get_main_admin_email()
+        if profile.google_email != main_admin_email:
+            return Response({'error': 'Main admin access required'}, status=403)
+            
+    except UserProfile.DoesNotExist:
+        return Response({'error': 'Admin access required'}, status=403)
+    
+    if request.method == 'POST':
+        # Close the poll
+        status = PollStatus.close_poll(request.user)
+        return Response({
+            'message': 'Poll closed successfully',
+            'closed_at': status.closed_at,
+            'closed_by': request.user.email
+        })
+    
+    elif request.method == 'DELETE':
+        # Reopen the poll
+        status = PollStatus.reopen_poll(request.user)
+        return Response({
+            'message': 'Poll reopened successfully',
+            'reopened_at': timezone.now(),
+            'reopened_by': request.user.email
+        })
 
 
 # --- Authentication Views ---
@@ -401,12 +668,14 @@ def admin_stats(request: Request):
 @permission_classes([IsAuthenticated])
 def logout_view(request: Request):
     """
-    Handle user logout.
-    This endpoint is called by the frontend before redirecting to Django's logout URL.
+    Handle user logout by clearing the Django session.
     """
-    # Django's session-based logout will be handled by the frontend redirect
-    # This endpoint just confirms the logout request
-    return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
+    try:
+        # Clear the Django session
+        request.session.flush()
+        return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": "Logout failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     
     

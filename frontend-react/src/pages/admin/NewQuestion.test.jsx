@@ -137,6 +137,9 @@ describe('NewQuestion', () => {
 
       renderNewQuestion();
       
+      // Add a second choice first (form now starts with only 1 choice field)
+      await user.click(screen.getByRole('button', { name: /add choice/i }));
+      
       // Fill out the form using centralized helper
       await fillForm(user, formData);
       
@@ -144,12 +147,13 @@ describe('NewQuestion', () => {
       expect(screen.getByDisplayValue(formData.question_text)).toBeInTheDocument();
       expect(screen.getByDisplayValue('JavaScript')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Python')).toBeInTheDocument();
-    });
+    }, 10000); // Increased timeout to 10s - form filling with user interactions can be slow
 
     test('allows user to add more choices to the form', async () => {
       renderNewQuestion();
       
-      // Add one more choice
+      // Add two more choices (form starts with 1, so we need 2 more to get 3 total)
+      await user.click(screen.getByRole('button', { name: /add choice/i }));
       await user.click(screen.getByRole('button', { name: /add choice/i }));
       
       // Verify we now have 3 choice inputs
@@ -193,6 +197,9 @@ describe('NewQuestion', () => {
       await user.clear(questionInput);
       await user.type(questionInput, 'Test Question');
       expect(screen.getByDisplayValue('Test Question')).toBeInTheDocument();
+      
+      // Add a second choice first
+      await user.click(screen.getByRole('button', { name: /add choice/i }));
       
       // Fill choices
       const choiceInputs = screen.getAllByTestId('chakra-input').filter(input => {

@@ -65,10 +65,10 @@ export const AuthProvider = ({ children }) => {
         try {
             await pollsApi.logout();
             setUser(null);
-            const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
-            window.location.href = `${apiBaseUrl}/accounts/logout/`;
+            // Don't redirect to Django logout - let the LogoutPage handle navigation
         } catch (error) {
             console.error('Logout error:', error);
+            throw error; // Re-throw so LogoutPage can handle it
         }
     };
 

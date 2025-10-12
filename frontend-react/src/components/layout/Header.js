@@ -11,7 +11,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 
 function Header() {
-  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const { user, login, isAuthenticated, isAdmin, hasVoted } = useAuth();
   const navigate = useNavigate();
 
   if (!isAuthenticated) {
@@ -29,7 +29,7 @@ function Header() {
             <Link as={RouterLink} to="/results" fontSize="md" fontWeight="medium" _hover={{ textDecoration: 'none', color: 'teal.500' }}>
               Results
             </Link>
-            <Button colorScheme="blue" onClick={() => navigate('/')}>
+            <Button colorScheme="blue" onClick={login}>
               Login
             </Button>
           </HStack>
@@ -49,8 +49,8 @@ function Header() {
           <Link as={RouterLink} to="/" fontSize="md" fontWeight="medium" _hover={{ textDecoration: 'none', color: 'teal.500' }}>
             Home
           </Link>
-          <Link as={RouterLink} to="/polls" fontSize="md" fontWeight="medium" _hover={{ textDecoration: 'none', color: 'teal.500' }}>
-            Polls
+          <Link as={RouterLink} to={hasVoted ? "/polls/review" : "/polls"} fontSize="md" fontWeight="medium" _hover={{ textDecoration: 'none', color: 'teal.500' }}>
+            {hasVoted ? "Review Poll" : "Polls"}
           </Link>
           {!isAdmin && (
             <Link as={RouterLink} to="/results" fontSize="md" fontWeight="medium" _hover={{ textDecoration: 'none', color: 'teal.500' }}>
@@ -62,10 +62,15 @@ function Header() {
               Admin Dashboard
             </Link>
           )}
+          {isAdmin && (
+            <Link as={RouterLink} to="/admin/results/" fontSize="md" fontWeight="medium" _hover={{ textDecoration: 'none', color: 'teal.500' }}>
+              Admin Results
+            </Link>
+          )}
           <Text fontSize="sm" color="gray.600">
             {user?.name || user?.email}
           </Text>
-          <Button variant="outline" onClick={logout}>
+          <Button variant="outline" onClick={() => navigate('/logout')}>
             Logout
           </Button>
         </HStack>

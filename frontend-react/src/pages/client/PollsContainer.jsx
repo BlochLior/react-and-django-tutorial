@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
     Box,
     VStack,
@@ -29,6 +29,7 @@ function PollsContainer() {
     });
     const [selectedAnswers, setSelectedAnswers] = useState({});
     const [isReviewing, setIsReviewing] = useState(false);
+    const [initialAnswersLoaded, setInitialAnswersLoaded] = useState(false);
 
     // Dynamic title based on current state
     usePageTitle(isReviewing ? 'Review Answers - Polling App' : 'Polls - Polling App');
@@ -65,7 +66,7 @@ function PollsContainer() {
         error
     } = useQuery(
         getPollsQuery,
-        [currentPage],
+        ['polls-paginated', currentPage],  // Unique key with page number
         { 
             errorMessage: 'Failed to fetch polls.',
             onSuccess: onPollsSuccess
@@ -73,6 +74,34 @@ function PollsContainer() {
     );
 
     const polls = pollsResponse?.results || [];
+    
+    // Fetch user's previous votes to pre-populate
+    const {
+        data: userVotesResponse,
+        loading: loadingUserVotes
+    } = useQuery(
+        async () => pollsApi.getUserVotes(),
+        ['user-votes-polls-container'],  // Unique identifier for this query
+        {
+            errorMessage: 'Failed to fetch your previous votes.',
+            enabled: true,
+            refetchOnMount: true  // Always fetch fresh when entering polls page
+        }
+    );
+
+    // Pre-populate selectedAnswers with user's previous votes
+    useEffect(() => {
+        if (userVotesResponse && !initialAnswersLoaded) {
+            const previousVotes = {};
+            userVotesResponse.results?.forEach(question => {
+                if (question.user_selected_choice_id) {
+                    previousVotes[question.id] = question.user_selected_choice_id;
+                }
+            });
+            setSelectedAnswers(previousVotes);
+            setInitialAnswersLoaded(true);
+        }
+    }, [userVotesResponse, initialAnswersLoaded]);
 
     // Using custom mutation hook for vote submission
     const [submitVotes, { error: submissionError }] = useMutation(
@@ -93,7 +122,7 @@ function PollsContainer() {
         refetch: refetchAllPolls 
     } = useQuery(
         getAllPollsQuery,
-        [],
+        ['all-polls-for-review'],  // Unique identifier for this query
         { 
             errorMessage: 'Failed to fetch all polls for review.',
             enabled: false // Only fetch when needed
@@ -111,10 +140,19 @@ function PollsContainer() {
     };
 
     const handleAnswerChange = (questionId, choiceId) => {
-        setSelectedAnswers((prev) => ({
-            ...prev,
-            [questionId]: choiceId,
-        }));
+        setSelectedAnswers((prev) => {
+            // If clicking the same choice again, remove it (deselect)
+            if (prev[questionId] === choiceId) {
+                const newAnswers = { ...prev };
+                delete newAnswers[questionId];
+                return newAnswers;
+            }
+            // Otherwise, select the new choice
+            return {
+                ...prev,
+                [questionId]: choiceId,
+            };
+        });
     };
 
     const handlePageChange = (newPage) => {
@@ -130,7 +168,7 @@ function PollsContainer() {
         await submitVotes(votes_dict);
     };
 
-    if (loading) {
+    if (loading || loadingUserVotes) {
         return (
             <LoadingState 
                 message="Loading polls..." 

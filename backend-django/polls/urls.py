@@ -8,4 +8,7 @@ urlpatterns = [
     # TODO: the client_poll_detail url might not be used in the frontend.
     path('<int:pk>/', views.client_poll_detail, name='client_poll_detail'),
     path('vote/', views.vote, name='vote'),
+    path('user-votes/', views.user_votes, name='user_votes'),
+    path('admin-user-management/', views.admin_user_management, name='admin_user_management'),
+    path('poll-closure/', views.poll_closure, name='poll_closure'),
 ]

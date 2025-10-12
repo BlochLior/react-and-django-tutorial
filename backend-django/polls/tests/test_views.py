@@ -23,14 +23,15 @@ class TestClientPollList(TestCase):
         self.url = reverse('polls:client_poll_list')
 
         # Create questions that should be visible
+        # Note: Questions ordered old to new, so question_1 should be oldest to appear on page 1
         self.question_1 = create_question_with_choices(
             question_text="First published question.",
-            days=-10,
+            days=-20,  # Oldest question
             choice_texts=["A", "B"]
         )
         self.question_2 = create_question_with_choices(
             question_text="Second published question.",
-            days=-5,
+            days=-19,  # Second oldest
             choice_texts=["C", "D"]
         )
 
@@ -38,7 +39,7 @@ class TestClientPollList(TestCase):
         for i in range(3, 8):
             create_question_with_choices(
                 question_text=f"Past question {i}.",
-                days=-(20 - i),
+                days=-(18 - i),  # Days -15, -14, -13, -12, -11 (newer than question 1 and 2)
                 choice_texts=[f"E{i}", f"F{i}"]
             )
 
@@ -156,8 +157,16 @@ class TestClientPollDetail(TestCase):
 # --- admin_create_question ---
 class TestAdminCreateQuestion(TestCase):
     def setUp(self):
-        self.client = Client()
+        self.client = APIClient()
         self.url = reverse('admin_create_question')
+        # Create admin user and authenticate
+        self.admin_user, self.admin_profile = create_test_user_with_profile(
+            username='admin',
+            email='admin@example.com',
+            google_email='admin@gmail.com',
+            is_admin=True
+        )
+        self.client.force_authenticate(user=self.admin_user)
 
     def test_admin_create_question_returns_201_created(self):
         """
@@ -275,8 +284,16 @@ class TestAdminCreateQuestion(TestCase):
 # --- admin_dashboard ---
 class TestAdminDashboard(TestCase):
     def setUp(self):
-        self.client = Client()
+        self.client = APIClient()
         self.url = reverse('admin_dashboard')
+        # Create admin user and authenticate
+        self.admin_user, self.admin_profile = create_test_user_with_profile(
+            username='admin',
+            email='admin@example.com',
+            google_email='admin@gmail.com',
+            is_admin=True
+        )
+        self.client.force_authenticate(user=self.admin_user)
 
         if self._testMethodName == "test_admin_dashboard_empty_database":
             return
@@ -385,7 +402,16 @@ class TestAdminDashboard(TestCase):
 # --- admin_question_detail ---
 class TestAdminQuestionDetail(TestCase):
     def setUp(self):
-        self.client = Client()
+        self.client = APIClient()
+        # Create admin user and authenticate
+        self.admin_user, self.admin_profile = create_test_user_with_profile(
+            username='admin',
+            email='admin@example.com',
+            google_email='admin@gmail.com',
+            is_admin=True
+        )
+        self.client.force_authenticate(user=self.admin_user)
+        
         self.question = create_question_with_choices(
             question_text="Detail test question",
             days=0,
@@ -480,6 +506,16 @@ class TestAdminResultsSummary(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.url = reverse('summary')
+        # Create admin user and authenticate
+        self.admin_user, self.admin_profile = create_test_user_with_profile(
+            username='admin',
+            email='admin@example.com',
+            google_email='admin@gmail.com',
+            is_admin=True
+        )
+        # Verify admin status is set correctly
+        self.admin_profile.refresh_from_db()
+        self.client.force_authenticate(user=self.admin_user)
         
         self.q1 = Question.objects.create(question_text="Question 1", pub_date=timezone.now())
         self.c1_1 = self.q1.choice_set.create(choice_text="C1", votes=5)
@@ -524,15 +560,16 @@ class TestAdminResultsSummary(TestCase):
         """
         response = self.client.get(self.url)
         
-        q1_data = response.data['questions_results'][0]
-        self.assertEqual(q1_data['id'], self.q1.id)
+        # Find questions by ID (order may vary based on pub_date)
+        questions_by_id = {q['id']: q for q in response.data['questions_results']}
+        
+        q1_data = questions_by_id[self.q1.id]
         self.assertEqual(q1_data['question_text'], "Question 1")
         self.assertEqual(q1_data['total_votes'], 10)
         self.assertEqual(q1_data['choices'][0]['percentage'], 50.0)
         self.assertEqual(q1_data['choices'][1]['percentage'], 50.0)
 
-        q2_data = response.data['questions_results'][1]
-        self.assertEqual(q2_data['id'], self.q2.id)
+        q2_data = questions_by_id[self.q2.id]
         self.assertEqual(q2_data['total_votes'], 20)
         self.assertEqual(q2_data['choices'][0]['percentage'], 50.0)
         self.assertEqual(q2_data['choices'][1]['percentage'], 0.0)
@@ -544,8 +581,12 @@ class TestAdminResultsSummary(TestCase):
         """
         response = self.client.get(self.url)
         
-        q3_data = response.data['questions_results'][2]
-        self.assertEqual(q3_data['id'], self.q3_choiceless.id)
+        # Find choiceless question by ID (order may vary)
+        questions_by_id = {q['id']: q for q in response.data['questions_results']}
+        self.assertIn(self.q3_choiceless.id, questions_by_id, 
+                     f"Choiceless question {self.q3_choiceless.id} not found in results. "
+                     f"Got IDs: {list(questions_by_id.keys())}")
+        q3_data = questions_by_id[self.q3_choiceless.id]
         self.assertEqual(q3_data['total_votes'], 0)
         self.assertEqual(len(q3_data['choices']), 0)
 

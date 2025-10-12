@@ -21,23 +21,24 @@ def create_user_profile(sender, instance, created, **kwargs):
         print(f"✅ Created UserProfile for user: {instance.username}")
 
 @receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
+def save_user_profile(sender, instance, created, **kwargs):
     """
-    Automatically save UserProfile when User is saved.
-    Only create if it doesn't exist, don't override existing data.
+    Ensure UserProfile exists for the user.
+    Don't save existing profiles to avoid overwriting changes.
     """
+    if created:
+        # Profile was already created by create_user_profile signal
+        return
+    
+    # For existing users, ensure they have a profile but don't overwrite it
     try:
-        # Only save if profile exists, don't create new one
-        if hasattr(instance, 'userprofile'):
-            instance.userprofile.save()
+        UserProfile.objects.get(user=instance)
     except UserProfile.DoesNotExist:
         # Create profile if it doesn't exist (for existing users)
-        UserProfile.objects.get_or_create(
+        UserProfile.objects.create(
             user=instance,
-            defaults={
-                'google_email': instance.email or '',
-                'google_name': instance.username or '',
-                'is_admin': False
-            }
+            google_email=instance.email or '',
+            google_name=instance.username or '',
+            is_admin=False
         )
         print(f"✅ Created missing UserProfile for user: {instance.username}")

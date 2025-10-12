@@ -5,14 +5,14 @@ import {
   Heading,
   VStack,
   Radio,
-  RadioGroup,
   Text
 } from '@chakra-ui/react';
 
 function QuestionCard({ question, selectedAnswer, onAnswerChange }) {
-  const handleChange = (choiceId) => {
-    // Call the onAnswerChange function with the questionId and the new choiceId
-    onAnswerChange(question.id, parseInt(choiceId));
+  const handleRadioClick = (choiceId) => {
+    // Always call onAnswerChange - the parent handles the toggle logic
+    // If it's the same choice, parent will remove it; otherwise, parent will set it
+    onAnswerChange(question.id, choiceId);
   };
 
   return (
@@ -30,25 +30,28 @@ function QuestionCard({ question, selectedAnswer, onAnswerChange }) {
             {question.question_text}
           </Heading>
           
-          <RadioGroup 
-            value={selectedAnswer ? String(selectedAnswer) : ''} 
-            onChange={handleChange}
-          >
-            <VStack spacing={3} align="stretch">
-              {question.choices.map(choice => (
-                <Radio 
-                  key={choice.id} 
-                  value={String(choice.id)}
-                  colorScheme="teal"
-                  size="lg"
-                >
-                  <Text fontSize="md" ml={2}>
-                    {choice.choice_text}
-                  </Text>
-                </Radio>
-              ))}
-            </VStack>
-          </RadioGroup>
+          <VStack spacing={3} align="stretch">
+            {question.choices.map(choice => (
+              <Radio 
+                key={choice.id} 
+                colorScheme="teal"
+                size="lg"
+                isChecked={selectedAnswer === choice.id}
+                onClick={() => handleRadioClick(choice.id)}
+                cursor="pointer"
+              >
+                <Text fontSize="md" ml={2}>
+                  {choice.choice_text}
+                </Text>
+              </Radio>
+            ))}
+          </VStack>
+          
+          {selectedAnswer && (
+            <Text fontSize="sm" color="gray.600" fontStyle="italic">
+              💡 Tip: Click your selected answer again to deselect it
+            </Text>
+          )}
         </VStack>
       </CardBody>
     </Card>

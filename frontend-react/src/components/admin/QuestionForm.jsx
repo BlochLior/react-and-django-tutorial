@@ -38,11 +38,18 @@ const validationSchema = yup.object({
       yup.object({
         choice_text: yup
           .string()
-          .required('Choice text is required')
-          .min(1, 'Choice cannot be empty'),
+          .notRequired() // Allow empty choice text
+          .test('non-empty-if-provided', 'Choice cannot be empty', function(value) {
+            // Only validate if value exists and is not just whitespace
+            if (value && value.trim().length > 0) {
+              return value.trim().length >= 1;
+            }
+            // Allow empty values
+            return true;
+          }),
       })
     )
-    .min(2, 'At least 2 choices are required')
+    .min(0, 'Choices are optional - you can create questions without choices')
     .max(10, 'Maximum 10 choices allowed'),
 });
 
@@ -61,7 +68,7 @@ const QuestionForm = ({
     pub_date: initialData?.pub_date || formatInTimeZone(new Date(), 'UTC', "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
     choices: initialData?.choices?.length > 0 
       ? initialData.choices 
-      : [{ choice_text: '' }, { choice_text: '' }],
+      : [{ choice_text: '' }], // Start with one empty choice, user can add more or leave empty
   };
 
   const {
@@ -88,13 +95,23 @@ const QuestionForm = ({
   const generateNotes = () => {
     const notes = [];
     
-    // Check for empty choices
-    const hasEmptyChoices = watchedChoices?.some(choice => !choice?.choice_text?.trim());
-    if (hasEmptyChoices) {
-      notes.push({
-        type: 'warning',
-        message: 'Some choices are empty and will be filtered out on submission.',
-      });
+    // Check for choices
+    const nonEmptyChoices = watchedChoices?.filter(choice => choice?.choice_text?.trim()).length || 0;
+    const totalChoices = watchedChoices?.length || 0;
+    
+    if (nonEmptyChoices === 0) {
+      // No non-empty choices
+      if (totalChoices === 0) {
+        notes.push({
+          type: 'info',
+          message: 'No choices provided - this will create a choiceless question.',
+        });
+      } else {
+        notes.push({
+          type: 'info',
+          message: 'No choices provided - this will create a choiceless question.',
+        });
+      }
     }
 
     // Check for future date
@@ -123,7 +140,7 @@ const QuestionForm = ({
       
       await onSubmit({
         ...data,
-        choices: filteredChoices,
+        choices: filteredChoices, // This can be an empty array for choiceless questions
       });
     } catch (error) {
       console.error('Form submission error:', error);
@@ -196,16 +213,14 @@ const QuestionForm = ({
                     </FormErrorMessage>
                   </FormControl>
                   
-                  {fields.length > 1 && (
-                    <IconButton
-                      aria-label="Remove choice"
-                      icon={<FaTrash />}
-                      colorScheme="red"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => remove(index)}
-                    />
-                  )}
+                  <IconButton
+                    aria-label="Remove choice"
+                    icon={<FaTrash />}
+                    colorScheme="red"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => remove(index)}
+                  />
                 </HStack>
               ))}
               

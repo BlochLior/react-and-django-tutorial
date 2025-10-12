@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   Box,
   VStack,
@@ -26,10 +26,11 @@ import {
 import { FaVoteYea, FaClock, FaQuestionCircle, FaExclamationTriangle } from 'react-icons/fa';
 import usePageTitle from '../../hooks/usePageTitle';
 import { isPublicationDateFuture, formatPublicationDate } from '../../utils/dateUtils';
-import { adminApi } from '../../services/apiService';
+import { adminApi, pollsApi } from '../../services/apiService';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
 import useQuery from '../../hooks/useQuery';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   hasQuestionChoices, 
   calculateVotePercentage, 
@@ -39,6 +40,8 @@ import {
 
 const ResultsSummary = () => {
   usePageTitle('Results Summary - Polling App');
+  const { isAdmin } = useAuth();
+  const [pollStatus, setPollStatus] = useState(null);
   
   // Create a stable query function
   const getResultsSummaryQuery = useCallback(async () => {
@@ -52,9 +55,26 @@ const ResultsSummary = () => {
     error
   } = useQuery(
     getResultsSummaryQuery,
-    [],
-    { errorMessage: 'Failed to fetch poll results.' }
+    ['results-summary'],  // Unique identifier for this query to prevent cache collision
+    { 
+      errorMessage: 'Failed to fetch poll results.',
+      refetchOnMount: true  // Always fetch fresh data when component mounts
+    }
   );
+
+  // Fetch poll status
+  useEffect(() => {
+    const fetchPollStatus = async () => {
+      try {
+        const response = await pollsApi.getPollStatus();
+        setPollStatus(response);
+      } catch (error) {
+        console.error('Failed to fetch poll status:', error);
+      }
+    };
+
+    fetchPollStatus();
+  }, []);
 
   if (loading) {
     return <LoadingState message="Loading results..." />;
@@ -64,7 +84,7 @@ const ResultsSummary = () => {
     return <ErrorState message={error} />;
   }
 
-  if (!summary || summary.questions_results.length === 0) {
+  if (!summary || !summary.questions_results || summary.questions_results.length === 0) {
     return (
       <Box py={8}>
         <Center>
@@ -180,6 +200,36 @@ const ResultsSummary = () => {
         <Heading as="h1" size="2xl" textAlign="center" color="teal.600">
           Poll Results Summary
         </Heading>
+
+        {/* Poll Status */}
+        {pollStatus && (
+          <Box bg="white" p={6} borderRadius="lg" borderWidth={1} borderColor="gray.200" shadow="sm">
+            <VStack spacing={3}>
+              <Heading size="sm" color="gray.700" textAlign="center">
+                {pollStatus.is_closed ? "🔒 Poll Status" : "🟢 Poll Status"}
+              </Heading>
+              <Badge 
+                colorScheme={pollStatus.is_closed ? "red" : "green"} 
+                fontSize="lg" 
+                px={6} 
+                py={3} 
+                borderRadius="md"
+              >
+                {pollStatus.is_closed ? "🔒 Closed" : "🟢 Open"}
+              </Badge>
+              {pollStatus.is_closed && pollStatus.closed_at && (
+                <Text fontSize="sm" textAlign="center" color="gray.600">
+                  Closed since: <strong>{new Date(pollStatus.closed_at).toLocaleString()}</strong>
+                </Text>
+              )}
+              {isAdmin && pollStatus.is_closed && pollStatus.closed_by && (
+                <Text fontSize="sm" textAlign="center" color="gray.600">
+                  Closed by: <strong>{pollStatus.closed_by}</strong>
+                </Text>
+              )}
+            </VStack>
+          </Box>
+        )}
 
         {/* Overall Stats */}
         <Box bg="white" p={6} borderRadius="lg" borderWidth={1} borderColor="gray.200" shadow="sm">

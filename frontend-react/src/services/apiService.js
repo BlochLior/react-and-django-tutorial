@@ -60,6 +60,12 @@ export const pollsApi = {
       throw error;
     }
   },
+  
+  // Get user's submitted votes
+  getUserVotes: async () => {
+    const response = await api.get('/polls/user-votes/');
+    return response.data;
+  },
 
   // Authentication methods
   getUserInfo: async () => {
@@ -80,6 +86,38 @@ export const pollsApi = {
   
   getAdminStats: async () => {
     const response = await api.get('/auth/admin-stats/');
+    return response.data;
+  },
+  
+  // Admin user management
+  getAdminUsers: async () => {
+    const response = await api.get('/polls/admin-user-management/');
+    return response.data;
+  },
+  
+  addAdminUser: async (email) => {
+    const response = await api.post('/polls/admin-user-management/', { email });
+    return response.data;
+  },
+  
+  removeAdminUser: async (email) => {
+    const response = await api.delete('/polls/admin-user-management/', { data: { email } });
+    return response.data;
+  },
+  
+  // Poll closure management
+  getPollStatus: async () => {
+    const response = await api.get('/polls/poll-closure/');
+    return response.data;
+  },
+  
+  closePoll: async () => {
+    const response = await api.post('/polls/poll-closure/');
+    return response.data;
+  },
+  
+  reopenPoll: async () => {
+    const response = await api.delete('/polls/poll-closure/');
     return response.data;
   },
   

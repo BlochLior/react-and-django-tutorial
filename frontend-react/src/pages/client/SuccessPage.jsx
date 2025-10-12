@@ -15,13 +15,15 @@ import {
     Center,
     useColorModeValue
 } from '@chakra-ui/react';
-import { FaCheckCircle, FaPoll, FaChartBar, FaHome, FaRedo } from 'react-icons/fa';
+import { FaCheckCircle, FaChartBar, FaHome } from 'react-icons/fa';
 import usePageTitle from '../../hooks/usePageTitle';
+import { useAuth } from '../../contexts/AuthContext';
 
 function SuccessPage() {
     usePageTitle('Success! - Polling App');
     const navigate = useNavigate();
-    const [countdown, setCountdown] = useState(15);
+    const { refreshAuthStatus } = useAuth();
+    const [countdown, setCountdown] = useState(10); // Reduced from 15s to 10s for faster redirect
 
     // Colors for the celebration theme
     const bgGradient = useColorModeValue(
@@ -30,6 +32,12 @@ function SuccessPage() {
     );
     
     const cardBg = useColorModeValue('white', 'gray.800');
+
+    // Refresh auth status when component mounts to update hasVoted status
+    useEffect(() => {
+        refreshAuthStatus();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run once on mount
 
     // Auto-redirect countdown
     useEffect(() => {
@@ -127,52 +135,29 @@ function SuccessPage() {
                                         What would you like to do next?
                                     </Text>
                                     
-                                    <VStack spacing={3} w="full">
-                                        <HStack spacing={4} w="full" justify="center" flexWrap="wrap">
-                                            <Button
-                                                leftIcon={<FaPoll />}
-                                                colorScheme="teal"
-                                                size="lg"
-                                                onClick={() => handleNavigate('/polls')}
-                                                flex={{ base: "1", md: "none" }}
-                                                minW="200px"
-                                            >
-                                                Back to Polls
-                                            </Button>
-                                            <Button
-                                                leftIcon={<FaChartBar />}
-                                                colorScheme="blue"
-                                                variant="outline"
-                                                size="lg"
-                                                onClick={() => handleNavigate('/admin/results')}
-                                                flex={{ base: "1", md: "none" }}
-                                                minW="200px"
-                                            >
-                                                View Results
-                                            </Button>
-                                        </HStack>
-                                        
-                                        <HStack spacing={4} w="full" justify="center" flexWrap="wrap">
-                                            <Button
-                                                leftIcon={<FaRedo />}
-                                                variant="ghost"
-                                                size="md"
-                                                onClick={() => handleNavigate('/polls/review')}
-                                                color="gray.600"
-                                            >
-                                                Review Your Answers
-                                            </Button>
-                                            <Button
-                                                leftIcon={<FaHome />}
-                                                variant="ghost"
-                                                size="md"
-                                                onClick={() => handleNavigate('/')}
-                                                color="gray.600"
-                                            >
-                                                Home
-                                            </Button>
-                                        </HStack>
-                                    </VStack>
+                                    <HStack spacing={4} w="full" justify="center" flexWrap="wrap">
+                                        <Button
+                                            leftIcon={<FaHome />}
+                                            colorScheme="blue"
+                                            size="lg"
+                                            onClick={() => handleNavigate('/')}
+                                            flex={{ base: "1", md: "none" }}
+                                            minW="200px"
+                                        >
+                                            Return Home
+                                        </Button>
+                                        <Button
+                                            leftIcon={<FaChartBar />}
+                                            colorScheme="green"
+                                            variant="outline"
+                                            size="lg"
+                                            onClick={() => handleNavigate('/results')}
+                                            flex={{ base: "1", md: "none" }}
+                                            minW="200px"
+                                        >
+                                            View Results
+                                        </Button>
+                                    </HStack>
                                 </VStack>
                             </CardBody>
                         </Card>

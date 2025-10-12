@@ -18,6 +18,7 @@ jest.mock('../../services/apiService', () => ({
     getPolls: jest.fn(),
     getAllPolls: jest.fn(),
     submitVotes: jest.fn(),
+    getUserVotes: jest.fn(),
   },
   handleApiError: jest.fn((error, defaultMessage) => {
     return error.message || defaultMessage;
@@ -122,14 +123,29 @@ describe('Polls-Review Page Integration', () => {
     mockNavigate.mockReset();
     
     // Set up centralized default mocks (using mockImplementation to call onSuccess callback)
-    // The component calls useQuery twice, so we need a stable mock that works for both calls
+    // The component calls useQuery THREE times now:
+    // 1. getPolls (paginated) - needs onSuccess callback
+    // 2. getUserVotes (for pre-loading previous votes) - returns empty results
+    // 3. getAllPolls (for review mode) - only when enabled
+    let queryCallCount = 0;
     mockUseQuery.mockImplementation((queryFn, deps, options) => {
-      const mockResponse = createMockPollsQuery();
-      // Call the onSuccess callback asynchronously to avoid infinite loops
-      if (options?.onSuccess && mockResponse.data) {
-        setTimeout(() => options.onSuccess(mockResponse.data), 0);
+      queryCallCount++;
+      
+      if (queryCallCount === 1) {
+        // First call: getPolls
+        const mockResponse = createMockPollsQuery();
+        // Call the onSuccess callback asynchronously to avoid infinite loops
+        if (options?.onSuccess && mockResponse.data) {
+          setTimeout(() => options.onSuccess(mockResponse.data), 0);
+        }
+        return mockResponse;
+      } else if (queryCallCount === 2) {
+        // Second call: getUserVotes
+        return { data: { results: [] }, loading: false, error: null };
+      } else {
+        // Third call: getAllPolls (for review mode)
+        return createMockAllPollsQuery();
       }
-      return mockResponse;
     });
     
     // Set up default mutation mock with navigation callback
@@ -140,6 +156,7 @@ describe('Polls-Review Page Integration', () => {
     pollsApi.getPolls.mockClear();
     pollsApi.getAllPolls.mockClear();
     pollsApi.submitVotes.mockClear();
+    pollsApi.getUserVotes.mockClear();
   });
 
   afterAll(() => {
@@ -318,11 +335,13 @@ describe('Polls-Review Page Integration', () => {
     test('shows loading state when loadingAllPolls is true and isReviewing is true', async () => {
       // Override the default query mock to simulate loading state for getAllPolls using centralized mocks
       // The component checks: if (loadingAllPolls && isReviewing)
+      // Need to mock all three useQuery calls now
       mockUseQuery
-        .mockReturnValueOnce(createMockPollsQuery()) // Initial polls query (successful)
+        .mockReturnValueOnce(createMockPollsQuery()) // First: getPolls (successful)
+        .mockReturnValueOnce({ data: { results: [] }, loading: false, error: null }) // Second: getUserVotes
         .mockReturnValueOnce(createMockAllPollsQuery({ 
           data: null, 
-          loading: true  // This will be loadingAllPolls
+          loading: true  // Third: getAllPolls (loading)
         }));
       
       render(
@@ -331,8 +350,7 @@ describe('Polls-Review Page Integration', () => {
         </QueryChakraRouterWrapper>
       );
 
-      // Since we're testing the loading state, we need to trigger the review mode
-      // but the component should show loading because loadingAllPolls is true
+      // Initial render should show polls (not review mode yet)
       // This test verifies the conditional rendering logic
       expect(screen.getByTestId('question-list')).toBeInTheDocument();
       expect(screen.getByText('Question 1')).toBeInTheDocument();

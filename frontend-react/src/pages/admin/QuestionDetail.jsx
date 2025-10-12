@@ -41,8 +41,11 @@ const QuestionDetail = () => {
         error: fetchError
     } = useQuery(
         getQuestionQuery,
-        [questionId],
-        { errorMessage: 'Failed to fetch question details.' }
+        ['question-detail', questionId], // Unique key with question ID
+        { 
+            errorMessage: 'Failed to fetch question details.',
+            refetchOnMount: true // Always fetch fresh data when editing
+        }
     );
 
     // Dynamic title based on question data

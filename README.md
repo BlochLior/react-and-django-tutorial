@@ -259,19 +259,21 @@ npm test -- --testPathPattern=PollsReviewIntegration.test.jsx
 ```bash
 cd backend-django
 
-# Install pytest-django first (if not already installed)
-uv sync
+# Install dev dependencies (includes coverage, pytest, etc.)
+uv sync --group dev
 
-# Run tests with pytest (Django-compatible)
-uv run pytest                     # Run all tests
-uv run pytest --cov=polls        # Run tests with coverage
-uv run pytest --cov-report=html  # Generate HTML coverage report
+# Run tests with Django's test runner
+uv run python manage.py test                    # Run all tests
+uv run python manage.py test polls.tests       # Run specific test module
+uv run python manage.py test --verbosity=2     # Run with verbose output
 
-# Alternative: Run tests with Django's built-in test runner
-uv run manage.py test      # Run all tests
-uv run coverage run --source=polls manage.py test  # Run tests with coverage
-uv run coverage report            # View coverage report
-uv run coverage html              # Generate HTML coverage report
+# Run tests with coverage
+uv run python -m coverage run --source='.' manage.py test
+uv run python -m coverage report --omit="*/tests/*,*/test_*.py"  # View coverage summary (excluding test files)
+uv run python -m coverage html --omit="*/tests/*,*/test_*.py"    # Generate HTML coverage report (opens htmlcov/index.html)
+
+# Alternative: Run specific test classes
+uv run python manage.py test polls.tests.test_views.TestAdminDashboard
 ```
 
 ### **Code Quality Tools**

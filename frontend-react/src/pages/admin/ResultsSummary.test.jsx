@@ -1,14 +1,13 @@
 import React from 'react';
 import { 
-  render, 
+  renderWithProviders, 
   cleanup,
   TEST_SCENARIOS,
   assertResultsSummaryLoadingState,
   assertResultsSummarySuccessState,
   assertResultsSummaryErrorState,
   assertResultsSummaryEmptyState,
-  assertResultsSummaryQuestionResults,
-  QueryChakraRouterWrapper
+  assertResultsSummaryQuestionResults
 } from '../../test-utils';
 import ResultsSummary from './ResultsSummary';
 
@@ -24,6 +23,14 @@ jest.mock('../../hooks/useQuery', () => {
 
 // Mock the usePageTitle hook
 jest.mock('../../hooks/usePageTitle', () => jest.fn());
+
+// Mock the useAuth hook
+jest.mock('../../contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: { is_admin: true, authenticated: true },
+    loading: false
+  })
+}));
 
 // Mock LoadingState component
 jest.mock('../../components/ui/LoadingState', () => ({ message }) => (
@@ -111,7 +118,7 @@ describe('ResultsSummary', () => {
   });
 
   const renderResultsSummary = () => {
-    return render(<ResultsSummary />, { wrapper: QueryChakraRouterWrapper });
+    return renderWithProviders(<ResultsSummary />);
   };
 
   describe('Data Loading States', () => {

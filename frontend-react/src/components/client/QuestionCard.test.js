@@ -50,7 +50,11 @@ describe('QuestionCard', () => {
       const selectedChoiceId = 102;
       render(<QuestionCard question={mockQuestion} selectedAnswer={selectedChoiceId} />);
 
-      // Use centralized assertion helper
+      // Check that the component renders with the selected answer
+      // The tip message should be visible when an answer is selected
+      expect(screen.getByText(/Tip: Click your selected answer again/)).toBeInTheDocument();
+      
+      // Also use centralized assertion helper
       assertQuestionCardSelectedChoice(selectedChoiceId);
     });
 
@@ -59,8 +63,16 @@ describe('QuestionCard', () => {
 
       // Should render without errors and no selection
       assertQuestionCardElements(mockQuestion);
-      const radioGroup = screen.getByTestId('chakra-radiogroup');
-      expect(radioGroup).toHaveAttribute('data-value', '');
+      
+      // Check that no radio buttons are checked
+      const radioButtons = screen.getAllByRole('radio');
+      radioButtons.forEach(radio => {
+        expect(radio).not.toHaveAttribute('data-checked');
+        expect(radio.getAttribute('aria-checked')).not.toBe('true');
+      });
+      
+      // The tip message should not be visible when nothing is selected
+      expect(screen.queryByText(/Tip: Click your selected answer again/)).not.toBeInTheDocument();
     });
   });
 

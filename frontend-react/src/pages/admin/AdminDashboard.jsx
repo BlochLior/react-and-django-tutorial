@@ -52,7 +52,7 @@ const AdminDashboard = () => {
         error
     } = useQuery(
         getQuestionsQuery,
-        [currentPage], // Dependencies for the query
+        ['admin-dashboard', currentPage], // Unique key with page number
         {
             errorMessage: 'Failed to fetch questions.',
             onSuccess: onSuccessCallback,
