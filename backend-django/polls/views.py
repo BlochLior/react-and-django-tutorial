@@ -3,6 +3,7 @@ from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import status
@@ -579,10 +580,12 @@ def poll_closure(request: Request):
 
 # --- Authentication Views ---
 @api_view(['GET'])
+@ensure_csrf_cookie
 def user_info(request: Request):
     """
     Get current user information for the home page.
     Returns user details, admin status, and voting status.
+    Also ensures CSRF cookie is sent for subsequent POST requests.
     """
     # Debug logging
     print(f"User info request - User: {request.user}, Authenticated: {request.user.is_authenticated}")
