@@ -3,7 +3,7 @@ from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.contrib.auth.models import User
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import status
@@ -144,6 +144,7 @@ def client_poll_detail(_request: Request, pk):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@csrf_exempt
 def vote(request: Request):
     """
     Handles a POST request to replace user's votes completely.
@@ -242,6 +243,7 @@ def user_votes(request: Request):
 # --- Admin Views ---
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@csrf_exempt
 def admin_create_question(request: Request):
     """
     Creates a new question with choices.
@@ -354,6 +356,7 @@ def admin_dashboard(request: Request):
 
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
+@csrf_exempt
 def admin_question_detail(request: Request, pk):
     """
     Handles read, update and delete operations for a single question.
@@ -467,6 +470,7 @@ def admin_results_summary(request: Request):
 
 @api_view(['GET', 'POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
+@csrf_exempt
 def admin_user_management(request: Request):
     """Manage admin users - only main admin can add/remove admins"""
     if not request.user.is_authenticated:
@@ -528,6 +532,7 @@ def admin_user_management(request: Request):
 
 
 @api_view(['GET', 'POST', 'DELETE'])
+@csrf_exempt
 def poll_closure(request: Request):
     """Manage poll closure - GET is public, POST/DELETE require main admin"""
     
@@ -667,9 +672,11 @@ def admin_stats(request: Request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@csrf_exempt
 def logout_view(request: Request):
     """
     Handle user logout by clearing the Django session.
+    CSRF exempt because user is already authenticated.
     """
     try:
         # Clear the Django session
