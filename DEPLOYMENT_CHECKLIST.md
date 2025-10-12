@@ -57,6 +57,10 @@ ENVIRONMENT=production
 FRONTEND_URL=https://your-app.vercel.app
 MAIN_ADMIN_EMAIL=your-admin@gmail.com
 
+# ========== NEW - For Automated Setup ==========
+SUPERUSER_EMAIL=admin@example.com
+SUPERUSER_PASSWORD=YourSecurePassword123!
+
 # ========== OPTIONAL - If using custom domains ==========
 ALLOWED_HOSTS=your-app.onrender.com
 ```
@@ -173,27 +177,183 @@ REACT_APP_API_BASE_URL=https://your-app.onrender.com
 
 ## 5️⃣ Initial Database Setup (One-Time)
 
-After deploying to Render for the first time, you need to set up the database:
+After deploying to Render for the first time, you need to set up the database.
 
-### **In Render Dashboard:**
-1. Go to your web service
-2. Click "Shell" tab (or use SSH)
-3. Run these commands:
+**Note:** Render's free tier doesn't include shell access. Use one of these methods:
+
+### **Method A: Custom Management Command (Easiest - Recommended)**
+
+A custom Django command is **already included** in your codebase that runs automatically on deployment!
+
+**What it does:**
+- ✅ Runs migrations
+- ✅ Creates superuser (if env vars set)
+- ✅ Updates Site configuration
+- ✅ Checks OAuth setup
+
+**You just need to add these to Render environment variables:**
+```bash
+SUPERUSER_EMAIL=admin@example.com
+SUPERUSER_PASSWORD=YourSecurePassword123!
+```
+
+The command runs automatically during deployment. After first deploy, you can:
+1. Access `/django-admin/` with the superuser credentials
+2. Update OAuth credentials in Social applications
+
+See **"Method A Details"** section below for how it works.
+
+### **Method B: Via Local Django Shell (Quick Fix)**
+
+Connect to your Railway database from your local machine:
 
 ```bash
+# 1. Set production DATABASE_URL locally (temporarily)
+export DATABASE_URL="mysql://root:password@railway.app:3306/railway"
+
+# 2. Run migrations
 cd backend-django
+uv run python manage.py migrate
 
-# 1. Run database migrations
-python manage.py migrate
+# 3. Create superuser
+uv run python manage.py createsuperuser
+# Enter username, email, password
 
-# 2. Create a superuser for Django admin panel
-python manage.py createsuperuser
-# Enter username, email, and password when prompted
-# This is for /django-admin/ access only
-
-# 3. Verify superuser was created
-python manage.py shell -c "from django.contrib.auth.models import User; print(f'Superusers: {list(User.objects.filter(is_superuser=True).values_list(\"username\", flat=True))}')"
+# 4. Set up Google OAuth SocialApp
+uv run python manage.py shell
 ```
+
+```python
+from allauth.socialaccount.models import SocialApp
+from django.contrib.sites.models import Site
+
+# Update site for production
+site = Site.objects.get(id=1)
+site.domain = 'your-app.onrender.com'
+site.name = 'Production'
+site.save()
+
+# Create/update Google OAuth app
+google_app, created = SocialApp.objects.update_or_create(
+    provider='google',
+    defaults={
+        'name': 'Google OAuth Production',
+        'client_id': 'your-production-client-id-from-google',
+        'secret': 'your-production-secret-from-google',
+    }
+)
+google_app.sites.add(site)
+print(f"OAuth app {' created' if created else 'updated'}")
+```
+
+### **Method C: Create a Setup API Endpoint (Most Automated)**
+
+Create a one-time setup endpoint (see **"Method C Details"** below).
+
+---
+
+## 📝 Method A Details: Custom Management Command
+
+**Create:** `backend-django/polls/management/commands/setup_production.py`
+
+```python
+from django.core.management.base import BaseCommand
+from django.contrib.auth.models import User
+from allauth.socialaccount.models import SocialApp
+from django.contrib.sites.models import Site
+import os
+
+class Command(BaseCommand):
+    help = 'Set up production environment (superuser, OAuth, site)'
+
+    def handle(self, *args, **options):
+        # Create superuser if doesn't exist
+        email = os.getenv('SUPERUSER_EMAIL', 'admin@example.com')
+        password = os.getenv('SUPERUSER_PASSWORD', 'changeme123')
+        
+        if not User.objects.filter(username='admin').exists():
+            User.objects.create_superuser('admin', email, password)
+            self.stdout.write(self.style.SUCCESS('✅ Superuser created'))
+        else:
+            self.stdout.write('ℹ️  Superuser already exists')
+        
+        # Update site
+        site = Site.objects.get(id=1)
+        site.domain = os.getenv('ALLOWED_HOSTS', 'localhost').split(',')[0]
+        site.name = 'Production'
+        site.save()
+        self.stdout.write(self.style.SUCCESS('✅ Site updated'))
+        
+        # Note about OAuth
+        self.stdout.write(self.style.WARNING(
+            '⚠️  Remember to update SocialApp OAuth credentials in Django admin!'
+        ))
+```
+
+**Configure in Render:**
+
+**Build Command:**
+```bash
+cd backend-django && uv sync --no-dev && uv run python manage.py migrate && uv run python manage.py setup_production
+```
+
+**Start Command:**
+```bash
+cd backend-django && uv run gunicorn mysite.wsgi:application --bind 0.0.0.0:$PORT
+```
+
+**Environment Variables to Add:**
+```bash
+SUPERUSER_EMAIL=admin@example.com
+SUPERUSER_PASSWORD=YourSecurePassword123!
+```
+
+**How it works:**
+1. First deployment triggers the build command
+2. `migrate` runs database migrations
+3. `setup_production` creates superuser and updates site
+4. Command outputs success/warning messages in Render logs
+5. You can then access `/django-admin/` to configure OAuth
+
+---
+
+## 📝 Method C Details: Setup API Endpoint
+
+**Create a temporary setup endpoint** (delete after use):
+
+```python
+# In polls/views.py
+@api_view(['POST'])
+def one_time_setup(request):
+    """One-time production setup - DELETE AFTER USE"""
+    if os.getenv('ENVIRONMENT') != 'production':
+        return Response({"error": "Not in production"}, status=400)
+    
+    # Check secret token
+    if request.data.get('secret') != os.getenv('SETUP_SECRET'):
+        return Response({"error": "Unauthorized"}, status=403)
+    
+    # Create superuser
+    # Update site
+    # Return success
+    
+    return Response({"status": "Setup complete"}, status=200)
+```
+
+Then POST to it once with the secret token.
+
+---
+
+## **🎯 Recommended Approach: Method B (Local Shell)**
+
+**Why:** It's the simplest and most reliable for a one-time setup.
+
+**Steps:**
+1. Temporarily connect to Railway database from local machine
+2. Run migrations and create superuser locally
+3. Set up OAuth credentials
+4. Disconnect (remove DATABASE_URL from local env)
+5. Deploy to Render
 
 **Important Notes:**
 - The superuser is for **Django admin panel only** (`/django-admin/`)
@@ -253,12 +413,19 @@ Before going live, verify:
 
 ### **Render (Backend):**
 ```bash
+# Core
 ENVIRONMENT=production
 SECRET_KEY=<generate-new-key>
 DEBUG=False
 DATABASE_URL=<from-railway>
+
+# OAuth & Authentication
 FRONTEND_URL=https://your-app.vercel.app
 MAIN_ADMIN_EMAIL=your-admin@gmail.com
+
+# Automated Setup (creates superuser on first deploy)
+SUPERUSER_EMAIL=admin@example.com
+SUPERUSER_PASSWORD=YourSecurePassword123!
 ```
 
 ### **Vercel (Frontend):**
