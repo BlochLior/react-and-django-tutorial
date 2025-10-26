@@ -645,6 +645,28 @@ def test_logout(request: Request):
     }, status=status.HTTP_200_OK)
 
 
+@api_view(['GET'])
+def cookie_debug(request: Request):
+    """
+    Debug endpoint to check cookie settings and session state.
+    """
+    response_data = {
+        'authenticated': request.user.is_authenticated,
+        'session_key': request.session.session_key,
+        'session_data': dict(request.session),
+        'cookies_received': dict(request.COOKIES),
+        'request_domain': request.get_host(),
+        'request_scheme': request.scheme,
+        'is_secure': request.is_secure(),
+    }
+    
+    # Create response and set a test cookie
+    response = Response(response_data, status=status.HTTP_200_OK)
+    response.set_cookie('test_cookie', 'test_value', max_age=3600)
+    
+    return response
+
+
 @api_view(['POST'])
 def simple_logout(request: Request):
     """
