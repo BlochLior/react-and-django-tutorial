@@ -793,12 +793,12 @@ class TestLogout(TestCase):
         self.client = APIClient()
         self.url = reverse('logout')
 
-    def test_logout_unauthenticated_returns_403(self):
+    def test_logout_unauthenticated_returns_401(self):
         """
-        Test that unauthenticated users get 403.
+        Test that unauthenticated users get 401 Unauthorized.
         """
         response = self.client.post(self.url)
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
 
     def test_logout_authenticated_returns_success(self):
         """
