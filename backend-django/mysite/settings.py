@@ -199,20 +199,13 @@ if not DATABASE_URL:
             }
         }
 else:
-    # Use MySQL for both dev and prod (MariaDB SkySQL)
+    # Use MySQL for both dev and prod (Aiven MySQL)
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
             conn_max_age=600,
         ),
     }
-    
-    # Configure SSL for MariaDB SkySQL (required for serverless connections)
-    if 'skysql.com' in DATABASE_URL or 'mariadb' in DATABASE_URL.lower():
-        DATABASES['default']['OPTIONS'] = {
-            'ssl': {'ssl_mode': 'REQUIRED'},
-            'charset': 'utf8mb4',
-        }
 
 
 # Password validation
