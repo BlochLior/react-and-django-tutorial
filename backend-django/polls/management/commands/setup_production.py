@@ -42,19 +42,14 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS('✅ Superuser updated with new email/password'))
         
         # 2. Update site configuration
-        site_domain = 'your-app.onrender.com'  # Default
+        site_domain = 'react-and-django-tutorial.onrender.com'  # Your actual domain
         try:
             site = Site.objects.get(id=1)
-            allowed_hosts = os.getenv('ALLOWED_HOSTS', '').split(',')
-            if allowed_hosts and allowed_hosts[0]:
-                site.domain = allowed_hosts[0].strip()
-                site.name = 'Production Site'
-                site.save()
-                site_domain = site.domain
-                self.stdout.write(self.style.SUCCESS(f'✅ Site updated: {site_domain}'))
-            else:
-                self.stdout.write(self.style.WARNING('⚠️  No ALLOWED_HOSTS set, skipping site update'))
-                site_domain = site.domain
+            # Use the actual Render domain
+            site.domain = site_domain
+            site.name = 'Production Site'
+            site.save()
+            self.stdout.write(self.style.SUCCESS(f'✅ Site updated: {site_domain}'))
         except Site.DoesNotExist:
             self.stdout.write(self.style.ERROR('❌ Site with ID=1 not found'))
         
