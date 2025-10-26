@@ -95,6 +95,9 @@ ACCOUNT_EMAIL_VERIFICATION = 'none'
 # Skip email verification for OAuth
 SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_LOGIN_ON_GET = True
+# Allow automatic signup for social accounts (no manual form)
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_QUERY_EMAIL = True
 
 # Redirect URLs for OAuth - environment aware
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
