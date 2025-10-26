@@ -6,6 +6,7 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from allauth.socialaccount.models import SocialApp
 from django.contrib.sites.models import Site
+from polls.models import UserProfile
 import os
 
 
@@ -40,6 +41,15 @@ class Command(BaseCommand):
                 admin_user.set_password(superuser_password)
                 admin_user.save()
                 self.stdout.write(self.style.SUCCESS('✅ Superuser updated with new email/password'))
+                
+                # Also update the UserProfile if it exists
+                try:
+                    profile = admin_user.userprofile
+                    profile.google_email = superuser_email
+                    profile.save()
+                    self.stdout.write(self.style.SUCCESS('✅ UserProfile email updated'))
+                except UserProfile.DoesNotExist:
+                    self.stdout.write(self.style.WARNING('⚠️  No UserProfile found for admin user'))
         
         # 2. Update site configuration
         site_domain = 'react-and-django-tutorial.onrender.com'  # Your actual domain
