@@ -646,6 +646,31 @@ def test_logout(request: Request):
 
 
 @api_view(['POST'])
+def simple_logout(request: Request):
+    """
+    Simple logout test endpoint - clears everything aggressively.
+    """
+    try:
+        print("Simple logout called")
+        
+        # Clear everything
+        request.session.flush()
+        
+        # Force logout
+        django_logout(request._request)
+        
+        # Clear any remaining data
+        for key in list(request.session.keys()):
+            del request.session[key]
+        
+        print("Simple logout completed")
+        return Response({"message": "Simple logout successful"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(f"Simple logout error: {str(e)}")
+        return Response({"error": f"Simple logout failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
 def fix_user_profile(request: Request):
     """
     Fix endpoint to correct UserProfile data.
@@ -789,13 +814,14 @@ def admin_stats(request: Request):
 @csrf_exempt
 def logout_view(request: Request):
     """
-    Handle user logout using Django's built-in logout function.
+    Handle user logout with aggressive session clearing.
     CSRF exempt because user is already authenticated.
     """
     try:
         # Debug logging
         print(f"Logout request - User: {request.user}, Authenticated: {request.user.is_authenticated}")
         print(f"Session key before: {request.session.session_key}")
+        print(f"Session data before: {dict(request.session)}")
         
         # Check if user is authenticated
         if not request.user.is_authenticated:
@@ -804,7 +830,15 @@ def logout_view(request: Request):
         # Use Django's built-in logout function
         django_logout(request._request)
         
+        # Also manually clear session data (more aggressive)
+        request.session.flush()
+        
+        # Clear any remaining session data
+        for key in list(request.session.keys()):
+            del request.session[key]
+        
         print(f"Session key after: {request.session.session_key}")
+        print(f"Session data after: {dict(request.session)}")
         print("Logout successful")
         return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
     except Exception as e:
