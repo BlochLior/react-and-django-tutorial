@@ -34,7 +34,12 @@ class Command(BaseCommand):
                 User.objects.create_superuser('admin', superuser_email, superuser_password)
                 self.stdout.write(self.style.SUCCESS('✅ Superuser created'))
             else:
-                self.stdout.write('ℹ️  Superuser already exists')
+                # Update existing superuser email and password
+                admin_user = User.objects.get(username='admin')
+                admin_user.email = superuser_email
+                admin_user.set_password(superuser_password)
+                admin_user.save()
+                self.stdout.write(self.style.SUCCESS('✅ Superuser updated with new email/password'))
         
         # 2. Update site configuration
         site_domain = 'your-app.onrender.com'  # Default
