@@ -117,6 +117,22 @@ SESSION_SAVE_EVERY_REQUEST = True  # Save session on every request
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF token
 CSRF_COOKIE_SAMESITE = 'None' if ENVIRONMENT == 'production' else 'Lax'  # None for cross-domain in production
 CSRF_COOKIE_SECURE = ENVIRONMENT == 'production'  # Secure cookies in production
+CSRF_COOKIE_NAME = 'csrftoken'  # Explicit cookie name for frontend compatibility
+
+# REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}
+
+# Exempt API endpoints from CSRF (they use authentication instead)
+# CSRF still applies to Django admin and other form-based endpoints
+CSRF_EXEMPT_URLS = [
+    r'^/polls/',
+    r'^/admin/',  # Our custom admin API endpoints
+    r'^/auth/',
+]
 
 if ENVIRONMENT == 'production':
     CSRF_TRUSTED_ORIGINS = [
@@ -183,13 +199,20 @@ if not DATABASE_URL:
             }
         }
 else:
-    # Use MySQL for both dev and prod (Railway MySQL)
+    # Use MySQL for both dev and prod (MariaDB SkySQL)
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
             conn_max_age=600,
         ),
     }
+    
+    # Configure SSL for MariaDB SkySQL (required for serverless connections)
+    if 'skysql.com' in DATABASE_URL or 'mariadb' in DATABASE_URL.lower():
+        DATABASES['default']['OPTIONS'] = {
+            'ssl': {'ssl_mode': 'REQUIRED'},
+            'charset': 'utf8mb4',
+        }
 
 
 # Password validation

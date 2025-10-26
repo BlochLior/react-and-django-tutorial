@@ -600,7 +600,12 @@ def user_info(request: Request):
     if request.user.is_authenticated:
         try:
             profile = request.user.userprofile
+            main_admin_email = AdminUserManagement.get_main_admin_email()
             print(f"User profile found: {profile.google_email}")
+            print(f"User is_admin flag: {profile.is_admin}")
+            print(f"Main admin email from env: {main_admin_email}")
+            print(f"Match: {profile.google_email == main_admin_email}")
+            
             return Response({
                 'authenticated': True,
                 'email': profile.google_email,
