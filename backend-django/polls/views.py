@@ -3,6 +3,7 @@ from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.contrib.auth import logout as django_logout
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -630,6 +631,20 @@ def debug_users(request: Request):
     return Response(debug_info, status=status.HTTP_200_OK)
 
 
+@api_view(['GET'])
+def test_logout(request: Request):
+    """
+    Test endpoint to check logout functionality.
+    Returns current session info.
+    """
+    return Response({
+        'authenticated': request.user.is_authenticated,
+        'username': request.user.username if request.user.is_authenticated else 'Anonymous',
+        'session_key': request.session.session_key,
+        'session_data': dict(request.session),
+    }, status=status.HTTP_200_OK)
+
+
 @api_view(['POST'])
 def fix_user_profile(request: Request):
     """
@@ -774,29 +789,22 @@ def admin_stats(request: Request):
 @csrf_exempt
 def logout_view(request: Request):
     """
-    Handle user logout by clearing the Django session.
+    Handle user logout using Django's built-in logout function.
     CSRF exempt because user is already authenticated.
     """
     try:
         # Debug logging
         print(f"Logout request - User: {request.user}, Authenticated: {request.user.is_authenticated}")
-        print(f"Session key: {request.session.session_key}")
+        print(f"Session key before: {request.session.session_key}")
         
         # Check if user is authenticated
         if not request.user.is_authenticated:
             return Response({"error": "User not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
         
-        # Clear the Django session
-        request.session.flush()
+        # Use Django's built-in logout function
+        django_logout(request._request)
         
-        # Also clear any allauth session data
-        if hasattr(request, 'user') and request.user.is_authenticated:
-            # Clear social account session data
-            if 'account_authentication_methods' in request.session:
-                del request.session['account_authentication_methods']
-            if 'socialaccount_states' in request.session:
-                del request.session['socialaccount_states']
-        
+        print(f"Session key after: {request.session.session_key}")
         print("Logout successful")
         return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
     except Exception as e:
