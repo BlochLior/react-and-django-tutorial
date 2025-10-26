@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+import os
 
 from pydantic import ValidationError
 
@@ -584,6 +585,51 @@ def poll_closure(request: Request):
 
 
 # --- Authentication Views ---
+@api_view(['GET'])
+def debug_users(request: Request):
+    """
+    Debug endpoint to see what users and profiles exist in the database.
+    Access via: https://your-app.onrender.com/polls/debug-users/
+    """
+    debug_info = {
+        'users': [],
+        'profiles': [],
+        'env_vars': {
+            'MAIN_ADMIN_EMAIL': os.getenv('MAIN_ADMIN_EMAIL', 'NOT SET'),
+            'SUPERUSER_EMAIL': os.getenv('SUPERUSER_EMAIL', 'NOT SET'),
+        },
+        'current_user': {
+            'username': request.user.username if request.user.is_authenticated else 'Anonymous',
+            'email': request.user.email if request.user.is_authenticated else 'N/A',
+            'is_authenticated': request.user.is_authenticated,
+        }
+    }
+    
+    # Get all users
+    for user in User.objects.all():
+        debug_info['users'].append({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'is_superuser': user.is_superuser,
+            'is_staff': user.is_staff,
+        })
+    
+    # Get all profiles
+    for profile in UserProfile.objects.all():
+        debug_info['profiles'].append({
+            'user_id': profile.user.id,
+            'user_username': profile.user.username,
+            'google_email': profile.google_email,
+            'google_name': profile.google_name,
+            'is_admin': profile.is_admin,
+        })
+    
+    return Response(debug_info, status=status.HTTP_200_OK)
+
+
 @api_view(['GET'])
 @ensure_csrf_cookie
 def user_info(request: Request):
