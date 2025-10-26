@@ -21,37 +21,40 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('⚠️  Skipping - not in production environment'))
             return
         
-        # 1. Create superuser if it doesn't exist
+        # 1. Ensure admin user exists (fallback for Django admin access)
         superuser_email = os.getenv('SUPERUSER_EMAIL')
         superuser_password = os.getenv('SUPERUSER_PASSWORD')
+        main_admin_email = os.getenv('MAIN_ADMIN_EMAIL')
         
-        if not superuser_email or not superuser_password:
-            self.stdout.write(self.style.WARNING(
-                '⚠️  SUPERUSER_EMAIL or SUPERUSER_PASSWORD not set. Skipping superuser creation.'
-            ))
-            self.stdout.write('   Set these env vars if you need a Django admin superuser.')
-        else:
+        # Create/update admin user for Django admin access
+        if superuser_email and superuser_password:
             if not User.objects.filter(username='admin').exists():
                 User.objects.create_superuser('admin', superuser_email, superuser_password)
-                self.stdout.write(self.style.SUCCESS('✅ Superuser created'))
+                self.stdout.write(self.style.SUCCESS('✅ Admin user created for Django admin access'))
             else:
-                # Update existing superuser email and password
                 admin_user = User.objects.get(username='admin')
                 admin_user.email = superuser_email
                 admin_user.set_password(superuser_password)
                 admin_user.save()
-                self.stdout.write(self.style.SUCCESS('✅ Superuser updated with new email/password'))
-                
-                # Also update the UserProfile if it exists
-                try:
-                    profile = admin_user.userprofile
-                    profile.google_email = superuser_email
-                    profile.save()
-                    self.stdout.write(self.style.SUCCESS('✅ UserProfile email updated'))
-                except UserProfile.DoesNotExist:
-                    self.stdout.write(self.style.WARNING('⚠️  No UserProfile found for admin user'))
+                self.stdout.write(self.style.SUCCESS('✅ Admin user updated'))
+        else:
+            self.stdout.write(self.style.WARNING('⚠️  No admin credentials - Django admin access limited'))
         
-        # 2. Update site configuration
+        # 2. Handle OAuth admin user (for app access)
+        if main_admin_email and User.objects.filter(email=main_admin_email).exists():
+            oauth_admin_user = User.objects.get(email=main_admin_email)
+            # Make sure OAuth user is also a superuser
+            if not oauth_admin_user.is_superuser:
+                oauth_admin_user.is_superuser = True
+                oauth_admin_user.is_staff = True
+                oauth_admin_user.save()
+                self.stdout.write(self.style.SUCCESS('✅ OAuth user made superuser'))
+            else:
+                self.stdout.write(self.style.SUCCESS('✅ OAuth admin user ready'))
+        else:
+            self.stdout.write(self.style.WARNING('⚠️  OAuth admin user not found - will be created on first login'))
+        
+        # 3. Update site configuration
         site_domain = 'react-and-django-tutorial.onrender.com'  # Your actual domain
         try:
             site = Site.objects.get(id=1)
@@ -63,7 +66,7 @@ class Command(BaseCommand):
         except Site.DoesNotExist:
             self.stdout.write(self.style.ERROR('❌ Site with ID=1 not found'))
         
-        # 3. Check OAuth configuration
+        # 4. Check OAuth configuration
         oauth_configured = SocialApp.objects.filter(provider='google').exists()
         if oauth_configured:
             self.stdout.write(self.style.SUCCESS('✅ Google OAuth app exists'))
@@ -77,7 +80,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('⚠️  No Google OAuth app found'))
             self.stdout.write(f'   Create one via: https://{site_domain}/django-admin/socialaccount/socialapp/')
         
-        # 4. Summary
+        # 5. Summary
         self.stdout.write(self.style.SUCCESS('\n' + '='*60))
         self.stdout.write(self.style.SUCCESS('Production setup complete!'))
         self.stdout.write(self.style.SUCCESS('='*60))
