@@ -12,4 +12,5 @@ urlpatterns = [
     path('admin-user-management/', views.admin_user_management, name='admin_user_management'),
     path('poll-closure/', views.poll_closure, name='poll_closure'),
     path('debug-users/', views.debug_users, name='debug_users'),
+    path('fix-user-profile/', views.fix_user_profile, name='fix_user_profile'),
 ]

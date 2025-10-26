@@ -630,6 +630,55 @@ def debug_users(request: Request):
     return Response(debug_info, status=status.HTTP_200_OK)
 
 
+@api_view(['POST'])
+def fix_user_profile(request: Request):
+    """
+    Fix endpoint to correct UserProfile data.
+    Call this to fix the admin user profile with correct Google data.
+    """
+    try:
+        # Get the admin user
+        admin_user = User.objects.get(username='admin')
+        profile = admin_user.userprofile
+        
+        # Update with correct data
+        profile.google_email = 'blochlior@gmail.com'
+        profile.google_name = 'Lior'  # Update with your actual name
+        profile.is_admin = True
+        profile.save()
+        
+        # Also update the user email
+        admin_user.email = 'blochlior@gmail.com'
+        admin_user.first_name = 'Lior'
+        admin_user.save()
+        
+        return Response({
+            'success': True,
+            'message': 'UserProfile fixed successfully',
+            'updated_profile': {
+                'google_email': profile.google_email,
+                'google_name': profile.google_name,
+                'is_admin': profile.is_admin,
+            }
+        }, status=status.HTTP_200_OK)
+        
+    except User.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Admin user not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except UserProfile.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'UserProfile not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['GET'])
 @ensure_csrf_cookie
 def user_info(request: Request):
