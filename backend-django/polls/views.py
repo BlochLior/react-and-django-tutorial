@@ -771,7 +771,6 @@ def admin_stats(request: Request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 @csrf_exempt
 def logout_view(request: Request):
     """
@@ -779,10 +778,29 @@ def logout_view(request: Request):
     CSRF exempt because user is already authenticated.
     """
     try:
+        # Debug logging
+        print(f"Logout request - User: {request.user}, Authenticated: {request.user.is_authenticated}")
+        print(f"Session key: {request.session.session_key}")
+        
+        # Check if user is authenticated
+        if not request.user.is_authenticated:
+            return Response({"error": "User not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+        
         # Clear the Django session
         request.session.flush()
+        
+        # Also clear any allauth session data
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            # Clear social account session data
+            if 'account_authentication_methods' in request.session:
+                del request.session['account_authentication_methods']
+            if 'socialaccount_states' in request.session:
+                del request.session['socialaccount_states']
+        
+        print("Logout successful")
         return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
-    except Exception:
+    except Exception as e:
+        print(f"Logout error: {str(e)}")
         return Response({"error": "Logout failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     
