@@ -810,8 +810,8 @@ def admin_stats(request: Request):
     })
 
 
-@api_view(['POST'])
 @csrf_exempt
+@api_view(['POST'])
 def logout_view(request: Request):
     """
     Handle user logout with aggressive session clearing.
