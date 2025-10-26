@@ -200,12 +200,22 @@ if not DATABASE_URL:
         }
 else:
     # Use MySQL for both dev and prod (Aiven MySQL)
+    # Remove ssl-mode from connection string as it's not supported by mysqlclient
+    clean_database_url = DATABASE_URL.replace('?ssl-mode=REQUIRED', '').replace('&ssl-mode=REQUIRED', '')
+    
     DATABASES = {
         'default': dj_database_url.config(
-            default=DATABASE_URL,
+            default=clean_database_url,
             conn_max_age=600,
         ),
     }
+    
+    # Configure SSL for Aiven MySQL (required for external connections)
+    if 'aivencloud.com' in DATABASE_URL:
+        DATABASES['default']['OPTIONS'] = {
+            'ssl': {'ca': None},  # Use system SSL certificates
+            'charset': 'utf8mb4',
+        }
 
 
 # Password validation
