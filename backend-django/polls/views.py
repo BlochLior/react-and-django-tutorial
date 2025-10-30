@@ -153,6 +153,7 @@ def client_poll_detail(_request: Request, pk):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @csrf_exempt
+@authentication_classes([CsrfExemptSessionAuthentication])
 def vote(request: Request):
     """
     Handles a POST request to replace user's votes completely.
@@ -252,6 +253,7 @@ def user_votes(request: Request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @csrf_exempt
+@authentication_classes([CsrfExemptSessionAuthentication])
 def admin_create_question(request: Request):
     """
     Creates a new question with choices.
@@ -365,6 +367,7 @@ def admin_dashboard(request: Request):
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @csrf_exempt
+@authentication_classes([CsrfExemptSessionAuthentication])
 def admin_question_detail(request: Request, pk):
     """
     Handles read, update and delete operations for a single question.
@@ -479,6 +482,7 @@ def admin_results_summary(request: Request):
 @api_view(['GET', 'POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @csrf_exempt
+@authentication_classes([CsrfExemptSessionAuthentication])
 def admin_user_management(request: Request):
     """Manage admin users - only main admin can add/remove admins"""
     if not request.user.is_authenticated:
@@ -541,6 +545,7 @@ def admin_user_management(request: Request):
 
 @api_view(['GET', 'POST', 'DELETE'])
 @csrf_exempt
+@authentication_classes([CsrfExemptSessionAuthentication])
 def poll_closure(request: Request):
     """Manage poll closure - GET is public, POST/DELETE require main admin"""
     
