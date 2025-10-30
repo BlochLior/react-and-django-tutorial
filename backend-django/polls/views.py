@@ -818,27 +818,36 @@ def admin_stats(request: Request):
         return Response({'error': 'Admin access required'}, status=403)
     
     # Calculate statistics
+    now = timezone.now()
     total_voters = UserVote.objects.values('user').distinct().count()
     total_votes = UserVote.objects.count()
     total_questions = Question.objects.count()
-    
-    # Hidden questions breakdown
-    unpublished_questions = Question.objects.filter(pub_date__gt=timezone.now()).count()
+
+    # Hidden questions breakdown (avoid double-counting overlaps)
+    unpublished_questions = Question.objects.filter(pub_date__gt=now).count()
     choiceless_questions = Question.objects.filter(choice__isnull=True).distinct().count()
     unpublished_choiceless = Question.objects.filter(
-        pub_date__gt=timezone.now(),
+        pub_date__gt=now,
         choice__isnull=True
     ).distinct().count()
-    
+
+    # Union size: |A ∪ B| = |A| + |B| - |A ∩ B|
+    hidden_total = unpublished_questions + choiceless_questions - unpublished_choiceless
+    hidden_total = max(hidden_total, 0)
+
+    # Visible to clients = published with choices
+    visible_to_clients = Question.objects.filter(pub_date__lte=now, choice__isnull=False).distinct().count()
+
     return Response({
         'total_voters': total_voters,
         'total_votes': total_votes,
         'total_questions': total_questions,
+        'visible_to_clients': visible_to_clients,
         'hidden_questions': {
             'unpublished': unpublished_questions,
             'choiceless': choiceless_questions,
             'unpublished_choiceless': unpublished_choiceless,
-            'total': unpublished_questions + choiceless_questions + unpublished_choiceless
+            'total': hidden_total
         }
     })
 
