@@ -8,7 +8,8 @@ from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 import os
 
@@ -27,6 +28,11 @@ from polls.serializers import serialize_question_with_choices, serialize_questio
 
 QUESTIONS_PER_PAGE = 5
 ADMIN_QUESTIONS_PER_PAGE = 10
+
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    """DRF SessionAuthentication that skips CSRF checks for unsafe methods."""
+    def enforce_csrf(self, request):
+        return
 
 def get_ordered_questions_for_admin():
     """Get questions ordered by admin dashboard requirements"""
@@ -834,6 +840,7 @@ def admin_stats(request: Request):
 
 @csrf_exempt
 @api_view(['POST'])
+@authentication_classes([CsrfExemptSessionAuthentication])
 def logout_view(request: Request):
     """
     Handle user logout with aggressive session clearing.
